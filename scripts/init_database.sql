@@ -12,11 +12,10 @@ Running this script will delete the existing 'DataWarehouse' database if it exis
 resulting in the loss of all data contained within it. 
 */
 
--- Create Database 'DataWarehouse'
+-- Create Database 'DataWarehouse' and drop the database if it already exists
 USE master;
 GO
 
--- Drop the database if it already exists
 IF EXISTS(SELECT 1 FROM sys.databases WHERE name = 'DataWarehouse')
 BEGIN
     ALTER DATABASE DataWarehouse SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
