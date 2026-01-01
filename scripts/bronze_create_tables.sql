@@ -13,8 +13,7 @@ USE DataWarehouse;
 GO
 
 -- Create tables from CRM data source
-IF OBJECT_ID ('bronze.crm_cust_info', 'U') IS NOT NULL
-    DROP TABLE bronze.crm_cust_info;
+IF OBJECT_ID ('bronze.crm_cust_info', 'U') IS NULL
 CREATE TABLE bronze.crm_cust_info (
     cust_id INT,
     cust_key NVARCHAR(50),
@@ -25,8 +24,7 @@ CREATE TABLE bronze.crm_cust_info (
     cst_create_date DATE
 );
 
-IF OBJECT_ID ('bronze.crm_prd_info', 'U') IS NOT NULL
-    DROP TABLE bronze.crm_prd_info;
+IF OBJECT_ID ('bronze.crm_prd_info', 'U') IS NULL
 CREATE TABLE bronze.crm_prd_info (
     prd_id INT,
     prd_key NVARCHAR(50),
@@ -37,8 +35,7 @@ CREATE TABLE bronze.crm_prd_info (
     prd_end_dt DATE
 );
 
-IF OBJECT_ID ('bronze.crm_sales_details', 'U') IS NOT NULL
-    DROP TABLE bronze.crm_sales_details;
+IF OBJECT_ID ('bronze.crm_sales_details', 'U') IS NULL
 CREATE TABLE bronze.crm_sales_details (
     sls_order_num INT,
     sls_prd_key NVARCHAR(50),
@@ -52,26 +49,24 @@ CREATE TABLE bronze.crm_sales_details (
 );
 
 -- Create tables from ERP data source
-IF OBJECT_ID ('bronze.erp_cust_az12', 'U') IS NOT NULL
-    DROP TABLE bronze.erp_cust_az12;
+IF OBJECT_ID ('bronze.erp_cust_az12', 'U') IS NULL
 CREATE TABLE bronze.erp_cust_az12 (
     cid INT,
     bdate DATE,
     gen NVARCHAR(50)
 );
 
-IF OBJECT_ID ('bronze.erp_loc_a101', 'U') IS NOT NULL
-    DROP TABLE bronze.erp_loc_a101;
+IF OBJECT_ID ('bronze.erp_loc_a101', 'U') IS NULL
 CREATE TABLE bronze.erp_loc_a101 (
     cid INT,
     cntry NVARCHAR(50)
 );
 
-IF OBJECT_ID ('bronze.erp_px_cat_g1v2', 'U') IS NOT NULL
-    DROP TABLE bronze.erp_px_cat_g1v2;
+IF OBJECT_ID ('bronze.erp_px_cat_g1v2', 'U') IS NULL
 CREATE TABLE bronze.erp_px_cat_g1v2 (
     id INT,
     cat NVARCHAR(50),
     subcat NVARCHAR(50),
     maintenance NVARCHAR(10)
 );
+
