@@ -37,7 +37,7 @@ BEGIN
         status NVARCHAR(50),
         error_message NVARCHAR(MAX) NULL,
         run_timestamp DATETIME DEFAULT GETDATE(),
-        query_run_time INT NULL,
+        query_run_time_ms INT NULL,
         layer NVARCHAR(50),
         error_class NVARCHAR(50),
         rows_read INT NULL,
