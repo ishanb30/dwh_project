@@ -7,6 +7,7 @@ object using environment variables for credentials
 
 import os
 import pyodbc
+from pathlib import Path
 
 def get_connection():
     server = os.environ.get('DB_SERVER')
@@ -22,5 +23,10 @@ def get_connection():
         f'PWD={password};'
         f'Encrypt=yes;TrustServerCertificate=yes;'
     )
+
+#File path names
+base_dir = Path(__file__).resolve().parent.parent
+sql_dir = base_dir / "sql" / "bronze"
+bronze_load_check = sql_dir / "load_orchestration_check.sql"
 
 
