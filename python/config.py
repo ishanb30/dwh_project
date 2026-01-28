@@ -25,8 +25,10 @@ def get_connection():
     )
 
 #File path names
-base_dir = Path(__file__).resolve().parent.parent
-sql_dir = base_dir / "sql" / "bronze"
-bronze_load_check = sql_dir / "load_orchestration_check.sql"
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+SQL_BRONZE_DIR = BASE_DIR / "sql" / "bronze"
+BRONZE_LOAD_CHECK = SQL_BRONZE_DIR / "load_orchestration_check.sql"
 
 
+SOURCE_CSV_DIR = BASE_DIR / "source"
