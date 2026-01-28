@@ -6,7 +6,7 @@ medallion layers
 """
 
 from cursor import get_cursor
-from config import bronze_load_check
+from config import BRONZE_LOAD_CHECK
 
 def run_bronze_pipeline():
     conn = None
@@ -17,7 +17,7 @@ def run_bronze_pipeline():
         cursor.execute("EXEC bronze.load_bronze_all")
         conn.commit()
 
-        with open(bronze_load_check, "r") as f:
+        with open(BRONZE_LOAD_CHECK, "r") as f:
             bronze_check = f.read()
 
         cursor.execute(bronze_check)
