@@ -1,12 +1,18 @@
 """
-Orchestrates Data Flow
+Run Bronze Pipeline
 
-Calls functions to run SQL load files between
-medallion layers
+Runs the Bronze layer pipeline. Detects
+and raises errors for upstream handling
 """
 
 from cursor import get_cursor
 from config import BRONZE_LOAD_CHECK
+
+class BronzePipelineFailed(Exception):
+    def __init__(self, proc_name, error_class, error_message):
+        self.proc_name = proc_name
+        self.error_class = error_class
+        self.error_message = error_message
 
 def run_bronze_pipeline():
     conn = None
@@ -27,17 +33,16 @@ def run_bronze_pipeline():
 
         if failed_steps:
             step = failed_steps[0]
-            print("Bronze pipeline failed due to:")
-            print(f"proc_name: {step[3]}")
-            print(f"error_class: {step[9]}")
-            print(f"error_message: {step[5]}")
-            return False
-        else:
-            print("Bronze pipeline ran successfully. Proceed to Silver.")
-            return True
+            raise BronzePipelineFailed(
+                proc_name = step[3],
+                error_class = step[9],
+                error_message = step[5]
+            )
+
+    except BronzePipelineFailed as e:
+        raise
     except Exception as e:
-        print(f"ERROR: Pipeline failed before completion: {e}")
-        return False
+        raise
     finally:
         if cursor:
             cursor.close()
@@ -45,6 +50,6 @@ def run_bronze_pipeline():
             conn.close()
 
 
+#To be run in a master orchestrator file
 if __name__ == "__main__":
     run_bronze_pipeline()
-#add silver and gold pipeline sequencing logic
