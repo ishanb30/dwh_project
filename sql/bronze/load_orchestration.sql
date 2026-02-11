@@ -48,9 +48,7 @@ BEGIN TRY
         UPDATE admin.etl_run_log
         SET
             status = 'SUCCESS',
-            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE()),
-            rows_read = NULL,
-            rows_written = (SELECT COUNT(*) FROM bronze.crm_cust_info)
+            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE())
         WHERE run_id = @run_id AND proc_name = 'bronze.load_crm_cust_info' AND status = 'STARTED';
 
     SET @start_time = GETDATE();
@@ -62,9 +60,7 @@ BEGIN TRY
         UPDATE admin.etl_run_log
         SET
             status = 'SUCCESS',
-            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE()),
-            rows_read = NULL,
-            rows_written = (SELECT COUNT(*) FROM bronze.crm_prd_info)
+            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE())
         WHERE run_id = @run_id AND proc_name = 'bronze.load_crm_prd_info' AND status = 'STARTED';
 
     SET @start_time = GETDATE();
@@ -76,9 +72,7 @@ BEGIN TRY
         UPDATE admin.etl_run_log
         SET
             status = 'SUCCESS',
-            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE()),
-            rows_read = NULL,
-            rows_written = (SELECT COUNT(*) FROM bronze.crm_sales_details)
+            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE())
         WHERE run_id = @run_id AND proc_name = 'bronze.load_crm_sales_details' AND status = 'STARTED';
 
     SET @start_time = GETDATE();
@@ -90,9 +84,7 @@ BEGIN TRY
         UPDATE admin.etl_run_log
         SET
             status = 'SUCCESS',
-            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE()),
-            rows_read = NULL,
-            rows_written = (SELECT COUNT(*) FROM bronze.erp_cust_az12)
+            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE())
         WHERE run_id = @run_id AND proc_name = 'bronze.load_erp_cust_az12' AND status = 'STARTED';
 
     SET @start_time = GETDATE();
@@ -104,9 +96,7 @@ BEGIN TRY
         UPDATE admin.etl_run_log
         SET
             status = 'SUCCESS',
-            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE()),
-            rows_read = NULL,
-            rows_written = (SELECT COUNT(*) FROM bronze.erp_loc_a101)
+            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE())
         WHERE run_id = @run_id AND proc_name = 'bronze.load_erp_loc_a101' AND status = 'STARTED';
 
     SET @start_time = GETDATE();
@@ -118,9 +108,7 @@ BEGIN TRY
         UPDATE admin.etl_run_log
         SET
             status = 'SUCCESS',
-            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE()),
-            rows_read = NULL,
-            rows_written = (SELECT COUNT(*) FROM bronze.erp_px_cat_g1v2)
+            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE())
         WHERE run_id = @run_id AND proc_name = 'bronze.load_erp_px_cat_g1v2' AND status = 'STARTED';
     END TRY
     BEGIN CATCH
@@ -134,7 +122,7 @@ BEGIN TRY
 
         UPDATE admin.etl_run_log
         SET
-            proc_name = 'bronze.load_bronze_all',
+            proc_name = @ErrorProc,
             status = 'FAILED',
             error_message = CONCAT('Step failed: ',@ErrorProc,' | ',@ErrorMsg),
             query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE()),
