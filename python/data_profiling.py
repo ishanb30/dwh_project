@@ -16,14 +16,15 @@ from config import SOURCE_CSV_DIR
 files = list(SOURCE_CSV_DIR.rglob("*.csv"))
 
 def length_and_numeric_checks(series, temp_numeric):
-    max_len = series.dropna().astype(str).str.len().max()
-    min_len = series.dropna().astype(str).str.len().min()
+    length = series.dropna().astype(str).str.len()
+    max_len = length.max()
+    min_len = length.min()
     num_max = None
     num_min = None
     if is_numeric_dtype(series):
         num_max = series.max()
         num_min = series.min()
-    elif temp_numeric.notnull().any():
+    elif temp_numeric.notna().any():
         num_max = temp_numeric.max()
         num_min = temp_numeric.min()
 
@@ -35,7 +36,8 @@ def length_and_numeric_checks(series, temp_numeric):
     }
 
 def basic_column_metrics(series):
-    null_pct = series.isnull().mean()
+    null_cnt = series.isna().sum()
+    null_pct = series.isna().mean()
     unique_cnt = series.nunique()
     row_cnt = series.shape[0]
     top3_common_values_str = "High Cardinality"
@@ -44,6 +46,7 @@ def basic_column_metrics(series):
         top3_common_values_str = ", ".join([f"{value}({count})" for value, count in top3_common_values_series.items()])
 
     return {
+        "Null Count": null_cnt,
         "Null Pct": null_pct,
         "Cardinality": unique_cnt,
         "Row Count": row_cnt,
@@ -53,17 +56,17 @@ def basic_column_metrics(series):
 
 def data_type(series, temp_numeric):
     boolean = [True, False,1,0]
-    if series.isnull().all():
+    if series.isna().all():
         return "Empty"
     if set(series.dropna().unique()).issubset(boolean):
         return "Boolean"
     if is_numeric_dtype(series):
         return "Numeric"
-    if temp_numeric.notnull().any():
+    if temp_numeric.notna().sum() >= 0.5 * series.shape[0]:
         return "Numeric as String"
 
     converted_date = pd.to_datetime(series, errors="coerce")
-    if converted_date.notnull().any():
+    if converted_date.notna().any():
         return "Date as String"
 
     return "String"
@@ -79,7 +82,6 @@ for file in files:
         series = source_df[column]
         temp_numeric = pd.to_numeric(series, errors="coerce")
 
-
         len_and_num = length_and_numeric_checks(series, temp_numeric)
         col_metrics = basic_column_metrics(series)
         dtype = data_type(series, temp_numeric)
@@ -91,6 +93,7 @@ for file in files:
             "Min Length": len_and_num["Min Length"],
             "Numeric Max": len_and_num["Numeric Max"],
             "Numeric Min": len_and_num["Numeric Min"],
+            "Null Count": col_metrics["Null Count"],
             "Null Pct": col_metrics["Null Pct"],
             "Cardinality": col_metrics["Cardinality"],
             "Row Count": col_metrics["Row Count"],
