@@ -41,7 +41,8 @@ BEGIN
         layer NVARCHAR(50),
         error_class NVARCHAR(50),
         rows_read INT NULL,
-        rows_written INT
+        rows_written INT,
+        validation_status NVARCHAR(20)
     );
 END
 
