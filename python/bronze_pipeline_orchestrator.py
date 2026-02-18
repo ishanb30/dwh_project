@@ -25,14 +25,12 @@ def run_bronze_pipeline():
 
         with open(BRONZE_LOAD_CHECK, "r") as f:
             bronze_check = f.read()
-
         cursor.execute(bronze_check)
         rows = cursor.fetchall()
 
         failed_steps = [row for row in rows if row[3]=="FAILED"]
-
         if failed_steps:
-            step = failed_steps[0]
+            step, = failed_steps
             raise BronzePipelineFailed(
                 proc_name = step[3],
                 error_class = step[9],
