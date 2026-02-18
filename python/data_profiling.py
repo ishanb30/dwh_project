@@ -55,7 +55,7 @@ def basic_column_metrics(series):
 
 
 def data_type(series, temp_numeric):
-    boolean = [True, False,1,0]
+    boolean = {True, False,1,0}
     if series.isna().all():
         return "Empty"
     if set(series.dropna().unique()).issubset(boolean):
@@ -64,13 +64,10 @@ def data_type(series, temp_numeric):
         return "Numeric"
     if temp_numeric.notna().sum() >= 0.5 * series.shape[0]:
         return "Numeric as String"
-
     converted_date = pd.to_datetime(series, errors="coerce")
-    if converted_date.notna().any():
+    if converted_date.notna().sum() > 0.5 * series.shape[0]:
         return "Date as String"
-
     return "String"
-
 
 profile_results = []
 
@@ -78,8 +75,7 @@ for file in files:
     name = file.stem
     source_df = pd.read_csv(file)
 
-    for column in source_df:
-        series = source_df[column]
+    for column_name, series in source_df.items():
         temp_numeric = pd.to_numeric(series, errors="coerce")
 
         len_and_num = length_and_numeric_checks(series, temp_numeric)
@@ -88,7 +84,7 @@ for file in files:
 
         row_dict = {
             "Name": name,
-            "Column": column,
+            "Column": column_name,
             "Max Length": len_and_num["Max Length"],
             "Min Length": len_and_num["Min Length"],
             "Numeric Max": len_and_num["Numeric Max"],
