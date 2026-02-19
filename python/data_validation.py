@@ -2,7 +2,6 @@
 Bronze Data Validation
 
 Analyses the row counts between the source files and the bronze layer tables.
-
 Outputs: updates the admin.etl_run_log table with rows read, rows written
 and validation status.
 """
@@ -82,15 +81,15 @@ try:
     source_keys = set(source_counts.keys())
     bronze_keys = set(bronze_counts.keys())
     if source_keys == bronze_keys:
-        if all(source_counts[key] == bronze_counts[key] for key in source_keys):
+        row_comparison = {}
+        for key in source_keys:
+            if source_counts[key] != bronze_counts[key]:
+                row_comparison[key] = (source_counts[key], bronze_counts[key])
+        if len(row_comparison) == 0:
             for key in source_keys:
                 update_with_row_count(source_counts, bronze_counts, 'SUCCESS', run_id, key, cursor)
             conn.commit()
         else:
-            row_comparison = {}
-            for key in source_keys:
-                if source_counts[key] != bronze_counts[key]:
-                    row_comparison[key] = (source_counts[key], bronze_counts[key])
             raise RowMismatch(row_comparison)
     else:
         key_comparison = source_keys.symmetric_difference(bronze_keys)
