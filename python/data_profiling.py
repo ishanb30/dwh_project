@@ -1,7 +1,7 @@
 """
 Source Data Profiling
 
-Analyzes all CSV files in source directory to calculate data quality metrics
+Analyses all CSV files in source directory to calculate data quality metrics
 (length bounds, null rates, cardinality, type inference) that inform
 Bronze table design and Silver transformation requirements.
 
