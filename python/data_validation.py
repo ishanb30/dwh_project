@@ -60,9 +60,9 @@ def update_without_row_count(status, run_id, key, cursor):
         WHERE run_id = '{run_id}' AND layer = 'bronze' AND proc_name = 'bronze.load_{key}'
     """)
 
+conn = None
+cursor = None
 try:
-    conn = None
-    cursor = None
     conn, cursor = get_cursor()
 
     cursor.execute("""
