@@ -13,8 +13,6 @@ from pandas.api.types import is_numeric_dtype
 from config import BASE_DIR
 from config import SOURCE_CSV_DIR
 
-files = list(SOURCE_CSV_DIR.rglob("*.csv"))
-
 def length_and_numeric_checks(series, temp_numeric):
     length = series.dropna().astype(str).str.len()
     max_len = length.max()
@@ -53,7 +51,6 @@ def basic_column_metrics(series):
         "Top 3 Common Values": top3_common_values_str
     }
 
-
 def data_type(series, temp_numeric):
     boolean = {True, False,1,0}
     if series.isna().all():
@@ -69,8 +66,8 @@ def data_type(series, temp_numeric):
         return "Date as String"
     return "String"
 
+files = list(SOURCE_CSV_DIR.rglob("*.csv"))
 profile_results = []
-
 for file in files:
     name = file.stem
     source_df = pd.read_csv(file)
