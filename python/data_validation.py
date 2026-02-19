@@ -104,11 +104,6 @@ except KeyMismatch as e:
         update_without_row_count('FAILED', run_id, key, cursor)
     conn.commit()
     raise
-except Exception as e:
-    for key in source_keys:
-        update_without_row_count('FAILED', run_id, key, cursor)
-    conn.commit()
-    raise
 finally:
     if cursor:
         cursor.close()
