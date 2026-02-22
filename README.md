@@ -155,6 +155,11 @@ The gold layer will expose a dimensional model optimised for analytical queries:
 - The null count covers all descriptive columns, excluding the row identifier and the date field (which serves a separate role in the tie-breaking logic).
 - Known gap: if two versions of the same customer have an identical null count *and* the same `cst_create_date`, both rows are returned. This is accepted as a rare edge case and is out of scope for this project — handling it would require additional business rules or a source-side record version flag that does not exist in the data.
 
+**Pipeline architecture — stored procedures over scripts**
+- Stored procedures were chosen over plain SQL scripts to keep orchestration logic at the database level. The master proc owns sequencing, error handling, and run logging, so Python only needs a single call to execute the full layer.
+- Writing to the run log from within the `TRY/CATCH` block is straightforward when the logic lives in SQL Server — doing the same from Python would mean catching SQL errors and issuing separate logging queries across two languages.
+- Child procs are reusable database objects that can be called from anywhere, and adding a new table requires only a new child proc and two lines in the master proc with no changes to Python.
+
 **CRM and ERP integration**
 - The join strategy between CRM and ERP tables is being determined through data profiling. Each table is being analysed individually before cross-system relationships are defined.
 
