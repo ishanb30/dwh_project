@@ -149,6 +149,7 @@ The gold layer will expose a dimensional model optimised for analytical queries:
 **Bronze — raw ingestion**
 - Source data is assumed to be dirty. No transformation is applied at this layer; all fields are stored as `NVARCHAR` to absorb type inconsistencies without rejecting rows. Type casting is deliberately deferred to silver.
 - `BULK INSERT` is run as a truncate-and-reload. Row count is therefore sufficient for validation — if the load fails mid-way, the table is empty and the count mismatch surfaces the problem.
+- One customer record contains an accented character (é in "Andrés") that is garbled on load. `BULK INSERT` on SQL Server for Linux does not support the `CODEPAGE` parameter, so the encoding of the source file cannot be specified. The practical workarounds — converting individual files or all files to UTF-16 — either introduce inconsistency between source files or require changes across all load procedures, neither of which is considered good practice. This is accepted as a known limitation of running SQL Server on Linux. In production, this would be handled by a cloud-native ingestion tool or a Windows-hosted SQL Server instance where `CODEPAGE` is supported.
 
 **Silver — deduplication**
 - Duplicate rows in the CRM customer table are assumed to represent updated versions of a record, not genuine duplicates. The source system does not flag which version is current, so a resolution strategy is applied: prefer the record with fewer null values across descriptive fields, then prefer the latest `cst_create_date` as a tie-breaker.
