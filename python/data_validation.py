@@ -22,10 +22,11 @@ class KeyMismatch(Exception):
 def get_source_row_counts(files):
     counts = {}
     for file in files:
-        df = pd.read_csv(file)
+        with open(file, "rb") as f:
+            row_count = sum(1 for line in f) - 1
         index = file.parent.name.find("_")
         name = f"{file.parent.name[index+1:]}_{file.stem.lower()}"
-        counts[name] = df.shape[0]
+        counts[name] = row_count
     return counts
 
 def get_bronze_row_counts(table_names, cursor):
