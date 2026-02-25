@@ -39,8 +39,6 @@ def run_bronze_pipeline():
 
     except BronzePipelineFailed as e:
         raise
-    except Exception as e:
-        raise
     finally:
         if cursor:
             cursor.close()
