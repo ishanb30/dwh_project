@@ -37,7 +37,7 @@ CREATE TABLE bronze.crm_prd_info (
 
 IF OBJECT_ID ('bronze.crm_sales_details', 'U') IS NULL
 CREATE TABLE bronze.crm_sales_details (
-    sls_order_num NVARCHAR(12),
+    sls_ord_num NVARCHAR(12),
     sls_prd_key NVARCHAR(17),
     sls_cust_id NVARCHAR(10),
     sls_order_dt NVARCHAR(20),
@@ -69,4 +69,3 @@ CREATE TABLE bronze.erp_px_cat_g1v2 (
     subcat NVARCHAR(35),
     maintenance NVARCHAR(5)
 );
-
