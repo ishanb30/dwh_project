@@ -151,11 +151,6 @@ The gold layer will expose a dimensional model optimised for analytical queries:
 - `BULK INSERT` is run as a truncate-and-reload. Row count is therefore sufficient for validation — if the load fails mid-way, the table is empty and the count mismatch surfaces the problem.
 - One customer record contains an accented character (é in "Andrés") that is garbled on load. `BULK INSERT` on SQL Server for Linux does not support the `CODEPAGE` parameter, so the encoding of the source file cannot be specified. The practical workarounds — converting individual files or all files to UTF-16 — either introduce inconsistency between source files or require changes across all load procedures, neither of which is considered good practice. This is accepted as a known limitation of running SQL Server on Linux. In production, this would be handled by a cloud-native ingestion tool or a Windows-hosted SQL Server instance where `CODEPAGE` is supported.
 
-**Silver — deduplication**
-- Duplicate rows in the CRM customer table are assumed to represent updated versions of a record, not genuine duplicates. The source system does not flag which version is current, so a resolution strategy is applied: prefer the record with fewer null values across descriptive fields, then prefer the latest `cst_create_date` as a tie-breaker.
-- The null count covers all descriptive columns, excluding the row identifier and the date field (which serves a separate role in the tie-breaking logic).
-- Known gap: if two versions of the same customer have an identical null count *and* the same `cst_create_date`, both rows are returned. This is accepted as a rare edge case and is out of scope for this project — handling it would require additional business rules or a source-side record version flag that does not exist in the data.
-
 **Pipeline architecture — stored procedures over scripts**
 - Stored procedures were chosen over plain SQL scripts to keep orchestration logic at the database level. The master proc owns sequencing, error handling, and run logging, so Python only needs a single call to execute the full layer.
 - Writing to the run log from within the `TRY/CATCH` block is straightforward when the logic lives in SQL Server — doing the same from Python would mean catching SQL errors and issuing separate logging queries across two languages.
