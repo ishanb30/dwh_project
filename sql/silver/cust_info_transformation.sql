@@ -4,7 +4,7 @@ Silver Transformation: crm_cust_info
 ====================================
 
 Purpose:
-Cleans and standardizes the crm_cust_info source table for the Silver layer.
+Cleans and standardises the crm_cust_info source table for the Silver layer.
 The script performs staged transformations using CTEs, including:
 
 - Basic data cleaning (TRIM, NULL handling, case normalisation)
