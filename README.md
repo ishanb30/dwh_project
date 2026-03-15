@@ -67,7 +67,10 @@ sql/
 │   ├── loc_a101_load.sql          # ERP location load proc
 │   ├── px_cat_g1v2_load.sql       # ERP product category load proc
 │   └── load_orchestration.sql     # Master proc: runs all bronze loads
-├── silver/                        # In progress
+├── silver/
+│   ├── cust_info_transformation.sql     # CRM customer info transformation
+│   ├── prd_info_transformation.sql      # CRM product info transformation
+│   └── sales_details_transformation.sql # CRM sales details transformation
 └── gold/                          # Planned
 
 python/
@@ -124,13 +127,17 @@ The bronze layer ingests raw CSV files directly into SQL Server with no transfor
 
 ## Silver Layer (In Progress)
 
-The silver layer will clean and conform raw bronze data. Work begun on `crm_cust_info`:
+The silver layer cleans and standardises raw bronze data. Transformations are applied in staged CTEs, each with a single clearly-named responsibility. Silver does not impute missing values or apply business-rule-based enrichment — those decisions are deferred to Gold.
 
-- Type casting (e.g. `NVARCHAR` → `INT`, `DATE`)
-- Whitespace trimming
-- Duplicate resolution using a multi-step strategy: prefer records with fewer nulls, then latest `cst_create_date`
+**CRM tables complete:**
 
-Remaining tables and the Python pipeline/validation layer are planned.
+| Table                      | Key transformations                                                                 |
+|----------------------------|-------------------------------------------------------------------------------------|
+| `crm_cust_info`            | Type casting, whitespace trimming, duplicate resolution (fewest nulls → latest date) |
+| `crm_prd_info`             | Key splitting, product line expansion, end date reconstruction from next start date  |
+| `crm_sales_details`        | Date format conversion, financial field derivation and reconciliation, bad data flagging |
+
+ERP tables and the Python pipeline/validation layer are planned.
 
 ---
 
@@ -141,6 +148,15 @@ The gold layer will expose a dimensional model optimised for analytical queries:
 - Dimension tables: customers, products, locations
 - Fact table: sales transactions
 - Business-ready views for reporting
+
+**Known items deferred from Silver:**
+
+| Item | Source table | Detail |
+|------|-------------|--------|
+| NULL order date imputation | `crm_sales_details` | Where `sls_order_dt` is NULL, attempt to borrow the date from another row with the same order number; if no sibling exists, leave as NULL |
+| Negative sales classification | `crm_sales_details` | Determine whether negative `sls_sales` values represent legitimate returns or data errors; requires a defined return window business rule |
+| Incomplete financial data | `crm_sales_details` | Rows flagged `sls_bad_financial_data = 'Y'` (both `sls_sales` and `sls_price` are NULL) need a resolution strategy |
+| Date chronological validation | `crm_sales_details` | Enforce `sls_order_dt <= sls_ship_dt <= sls_due_dt`; rows violating this require a business rule to determine which date is incorrect |
 
 ---
 
@@ -155,6 +171,9 @@ The gold layer will expose a dimensional model optimised for analytical queries:
 - Stored procedures were chosen over plain SQL scripts to keep orchestration logic at the database level. The master proc owns sequencing, error handling, and run logging, so Python only needs a single call to execute the full layer.
 - Writing to the run log from within the `TRY/CATCH` block is straightforward when the logic lives in SQL Server — doing the same from Python would mean catching SQL errors and issuing separate logging queries across two languages.
 - Child procs are reusable database objects that can be called from anywhere, and adding a new table requires only a new child proc and two lines in the master proc with no changes to Python.
+
+**Silver — cleaning boundary**
+- Silver is responsible for cleaning and standardising only: format corrections, type casting, and resolving errors that can be derived mathematically. It does not impute missing values or apply business rules to interpret data intent. Those decisions belong in Gold, where business context is available.
 
 **CRM and ERP integration**
 - The join strategy between CRM and ERP tables is being determined through data profiling. Each table is being analysed individually before cross-system relationships are defined.
