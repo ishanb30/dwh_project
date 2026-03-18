@@ -70,7 +70,8 @@ sql/
 ├── silver/
 │   ├── cust_info_transformation.sql     # CRM customer info transformation
 │   ├── prd_info_transformation.sql      # CRM product info transformation
-│   └── sales_details_transformation.sql # CRM sales details transformation
+│   ├── sales_details_transformation.sql # CRM sales details transformation
+│   └── cust_az12_transformation.sql     # ERP customer transformation
 └── gold/                          # Planned
 
 python/
@@ -137,7 +138,13 @@ The silver layer cleans and standardises raw bronze data. Transformations are ap
 | `crm_prd_info`             | Key splitting, product line expansion, end date reconstruction from next start date  |
 | `crm_sales_details`        | Date format conversion, financial field derivation and reconciliation, bad data flagging |
 
-ERP tables and the Python pipeline/validation layer are planned.
+**ERP tables in progress:**
+
+| Table                      | Key transformations                                                                 |
+|----------------------------|-------------------------------------------------------------------------------------|
+| `erp_cust_az12`            | Customer ID normalisation to cst_key format, date casting, gender standardisation   |
+
+Remaining ERP tables and the Python pipeline/validation layer are planned.
 
 ---
 
@@ -157,6 +164,7 @@ The gold layer will expose a dimensional model optimised for analytical queries:
 | Negative sales classification | `crm_sales_details` | Determine whether negative `sls_sales` values represent legitimate returns or data errors; requires a defined return window business rule |
 | Incomplete financial data | `crm_sales_details` | Rows flagged `sls_bad_financial_data = 'Y'` (both `sls_sales` and `sls_price` are NULL) need a resolution strategy |
 | Date chronological validation | `crm_sales_details` | Enforce `sls_order_dt <= sls_ship_dt <= sls_due_dt`; rows violating this require a business rule to determine which date is incorrect |
+| Unrecognised coded field values | All Silver tables | In CASE WHEN transformations that map source codes to readable labels (e.g. gender, product line), values outside the known set are set to NULL in Silver. Gold will apply a business rule to label these — for example as `'Unknown'` or a catch-all category — once business context is available |
 
 ---
 
