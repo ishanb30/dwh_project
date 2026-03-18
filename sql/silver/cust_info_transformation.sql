@@ -75,13 +75,17 @@ crm_cust_info_transformed AS (
             ELSE NULL
         END AS cst_lastname, 
         CASE
-            WHEN cst_marital_status = 'M' THEN 'Married'
-            WHEN cst_marital_status = 'S' THEN 'Single'
+            WHEN UPPER(cst_marital_status) = 'M' THEN 'Married'
+            WHEN UPPER(cst_marital_status) = 'S' THEN 'Single'
+            WHEN UPPER(cst_marital_status) = 'MARRIED' THEN 'Married'
+            WHEN UPPER(cst_marital_status) = 'SINGLE' THEN 'Single'
             ELSE NULL
         END AS cst_marital_status,
         CASE
-            WHEN cst_gndr = 'M' THEN 'Male'
-            WHEN cst_gndr = 'F' THEN 'Female'
+            WHEN UPPER(cst_gndr) = 'M' THEN 'Male'
+            WHEN UPPER(cst_gndr) = 'F' THEN 'Female'
+            WHEN UPPER(cst_gndr) = 'MALE' THEN 'Male'
+            WHEN UPPER(cst_gndr) = 'FEMALE' THEN 'Female'
             ELSE NULL
         END AS cst_gndr,
         cst_create_date
