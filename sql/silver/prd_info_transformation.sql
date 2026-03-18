@@ -46,6 +46,13 @@ Assumptions:
    The source prd_end_dt field contains a trailing carriage return
    character (\r) introduced during ingestion. LEFT() is used to remove
    this character before casting to a DATE data type.
+
+5. prd_line Mapping
+   In the value set, 'M', 'R', and 'T' were derived from prd_nm. 'S' was
+   unable to be mapped to a specific word, so 'Other' was used. Derivations
+   like this would be usually be handled in the Gold layer, but in real
+   world cases, I would have business context and would know exactly what
+   the letters map to.
 */
 
 USE DataWarehouse;
@@ -76,9 +83,7 @@ crm_prd_info_transformed AS(
             WHEN prd_line = 'R' THEN 'Road'
             WHEN prd_line = 'T' THEN 'Touring'
             WHEN prd_line = 'S' THEN 'Other'
-            WHEN prd_line NOT IN ('M','R','S','T') AND 
-                prd_line IS NOT NULL THEN 'N/A'
-            ELSE 'Unknown'
+            ELSE NULL
         END AS prd_line,
         prd_start_dt,
         prd_end_dt
