@@ -59,7 +59,7 @@ WITH crm_prd_info_cleaned AS(
         TRY_CAST(ABS(TRIM(prd_cost)) AS DECIMAL(10,2)) AS prd_cost,
         NULLIF(UPPER(TRIM(prd_line)), '') AS prd_line,
         TRIM(prd_start_dt) AS prd_start_dt,
-        LEFT(TRIM(prd_end_dt), 10) AS prd_end_dt
+        TRIM(CHAR(13) FROM TRIM(prd_end_dt)) AS prd_end_dt
     FROM
         bronze.crm_prd_info
 ),

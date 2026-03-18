@@ -15,8 +15,8 @@ GO
 -- Create tables from CRM data source
 IF OBJECT_ID ('bronze.crm_cust_info', 'U') IS NULL
 CREATE TABLE bronze.crm_cust_info (
-    cust_id NVARCHAR(12),
-    cust_key NVARCHAR(17),
+    cst_id NVARCHAR(12),
+    cst_key NVARCHAR(17),
     cst_firstname NVARCHAR(45),
     cst_lastname NVARCHAR(45),
     cst_marital_status NVARCHAR(5),

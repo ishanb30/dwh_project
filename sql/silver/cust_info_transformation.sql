@@ -48,7 +48,7 @@ WITH crm_cust_info_cleaned AS (
         NULLIF(TRIM(cst_lastname), '') AS cst_lastname,
         NULLIF(UPPER(TRIM(cst_marital_status)), '') AS cst_marital_status,
         NULLIF(UPPER(TRIM(cst_gndr)), '') AS cst_gndr,
-        LEFT(TRIM(cst_create_date), 10) AS cst_create_date
+        TRIM(CHAR(13) FROM TRIM(cst_create_date)) AS cst_create_date
     FROM
         bronze.crm_cust_info
 ),

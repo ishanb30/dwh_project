@@ -16,7 +16,7 @@ def run_source_to_docker():
 
         for file in files:
             subprocess.run(
-                ["docker", "cp", {file}, f"mssql_server:/var/opt/mssql/data/{file.name.lower()}"]
+                ["docker", "cp", file, f"mssql_server:/var/opt/mssql/data/{file.name.lower()}"]
                 , check=True
             )
     except subprocess.CalledProcessError as e:
