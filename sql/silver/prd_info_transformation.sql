@@ -53,6 +53,10 @@ Assumptions:
    like this would be usually be handled in the Gold layer, but in real
    world cases, I would have business context and would know exactly what
    the letters map to.
+
+   'Other' for any value that is not null but not in the standard value set
+   that has been identified is not a derivation, but instead a naming
+   convention. Therefore, it occurs in the Silver layer and not the Gold layer.
 */
 
 USE DataWarehouse;
@@ -79,10 +83,13 @@ crm_prd_info_transformed AS(
         prd_nm,
         prd_cost,
         CASE
-            WHEN prd_line = 'M' THEN 'Mountain'
-            WHEN prd_line = 'R' THEN 'Road'
-            WHEN prd_line = 'T' THEN 'Touring'
-            WHEN prd_line = 'S' THEN 'Other'
+            WHEN UPPER(prd_line) = 'M' THEN 'Mountain'
+            WHEN UPPER(prd_line) = 'R' THEN 'Road'
+            WHEN UPPER(prd_line) = 'T' THEN 'Touring'
+            WHEN UPPER(prd_line) = 'S' THEN 'Miscellaneous'
+            WHEN UPPER(prd_line) IS NOT NULL AND
+                UPPER(prd_line) NOT IN ('M','R','T','S')
+                THEN 'Other'
             ELSE NULL
         END AS prd_line,
         prd_start_dt,
