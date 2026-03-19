@@ -35,6 +35,11 @@ Assumptions:
    The source cst_create_date field contains a trailing carriage return
    character (\r) introduced during ingestion. LEFT() is used to remove
    this character before casting to a DATE type.
+
+3. Non Value Set Values
+   For both 'cst_marital_status' and 'cst_gndr', any values not in the value
+   set are labelled as 'Other'. This is not a derivation, but instead a naming
+   convention. Therefore, it occurs in the Silver layer and not the Gold layer.
 */
 
 USE DataWarehouse;
@@ -79,6 +84,9 @@ crm_cust_info_transformed AS (
             WHEN UPPER(cst_marital_status) = 'S' THEN 'Single'
             WHEN UPPER(cst_marital_status) = 'MARRIED' THEN 'Married'
             WHEN UPPER(cst_marital_status) = 'SINGLE' THEN 'Single'
+            WHEN UPPER(cst_marital_status) IS NOT NULL AND 
+                UPPER(cst_marital_status) NOT IN ('M','S','MARRIED','SINGLE')
+                THEN 'Other'
             ELSE NULL
         END AS cst_marital_status,
         CASE
@@ -86,6 +94,9 @@ crm_cust_info_transformed AS (
             WHEN UPPER(cst_gndr) = 'F' THEN 'Female'
             WHEN UPPER(cst_gndr) = 'MALE' THEN 'Male'
             WHEN UPPER(cst_gndr) = 'FEMALE' THEN 'Female'
+            WHEN UPPER(cst_gndr) IS NOT NULL AND
+                UPPER(cst_gndr) NOT IN ('M','F','MALE','FEMALE')
+                THEN 'Other'
             ELSE NULL
         END AS cst_gndr,
         cst_create_date
