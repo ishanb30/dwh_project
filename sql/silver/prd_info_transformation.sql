@@ -54,7 +54,7 @@ Assumptions:
    world cases, I would have business context and would know exactly what
    the letters map to.
 
-   'Other' for any value that is not null but not in the standard value set
+   'n/a' for any value that is not null but not in the standard value set
    that has been identified is not a derivation, but instead a naming
    convention. Therefore, it occurs in the Silver layer and not the Gold layer.
 */
@@ -89,7 +89,7 @@ crm_prd_info_transformed AS(
             WHEN UPPER(prd_line) = 'S' THEN 'Miscellaneous'
             WHEN UPPER(prd_line) IS NOT NULL AND
                 UPPER(prd_line) NOT IN ('M','R','T','S')
-                THEN 'Other'
+                THEN 'n/a'
             ELSE NULL
         END AS prd_line,
         prd_start_dt,
@@ -105,7 +105,7 @@ crm_prd_info_casted AS(
         CAST(prd_key AS VARCHAR(14)) AS prd_key,
         CAST(prd_nm AS VARCHAR(50)) AS prd_nm,
         prd_cost,
-        CAST(prd_line AS VARCHAR(8)) AS prd_line,
+        CAST(prd_line AS VARCHAR(13)) AS prd_line,
         TRY_CAST(prd_start_dt AS DATE) AS prd_start_dt,
         TRY_CAST(prd_end_dt AS DATE) AS prd_end_dt
     FROM
