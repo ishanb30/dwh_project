@@ -162,9 +162,9 @@ The gold layer will expose a dimensional model optimised for analytical queries:
 |------|-------------|--------|
 | NULL order date imputation | `crm_sales_details` | Where `sls_order_dt` is NULL, attempt to borrow the date from another row with the same order number; if no sibling exists, leave as NULL |
 | Negative sales classification | `crm_sales_details` | Determine whether negative `sls_sales` values represent legitimate returns or data errors; requires a defined return window business rule |
-| Incomplete financial data | `crm_sales_details` | Rows flagged `sls_bad_financial_data = 'Y'` (both `sls_sales` and `sls_price` are NULL) need a resolution strategy |
+| Incomplete financial data | `crm_sales_details` | Rows flagged `sls_incomplete_financial_data = 'Y'` (both `sls_sales` and `sls_price` are NULL) need a resolution strategy |
 | Date chronological validation | `crm_sales_details` | Enforce `sls_order_dt <= sls_ship_dt <= sls_due_dt`; rows violating this require a business rule to determine which date is incorrect |
-| Unrecognised coded field values | All Silver tables | In CASE WHEN transformations that map source codes to readable labels (e.g. gender, product line), values outside the known set are set to NULL in Silver. Gold will apply a business rule to label these — for example as `'Unknown'` or a catch-all category — once business context is available |
+| Unrecognised coded field values | All Silver tables | In CASE WHEN transformations that map source codes to readable labels (e.g. gender, product line), values outside the known set are set to NULL in Silver. Gold will apply a business rule to label these as `'Other'` or a domain-appropriate catch-all once business context is available |
 
 ---
 
@@ -182,6 +182,7 @@ The gold layer will expose a dimensional model optimised for analytical queries:
 
 **Silver — cleaning boundary**
 - Silver is responsible for cleaning and standardising only: format corrections, type casting, and resolving errors that can be derived mathematically. It does not impute missing values or apply business rules to interpret data intent. Those decisions belong in Gold, where business context is available.
+- Silver loads use truncate-and-reload. The production standard for handling source corrections is upsert (MERGE) or alternatives such as watermark loading or Change Data Capture (CDC). These were not chosen for the following reasons: the source is a static, one-time dataset with no incremental batches (ruling out watermark loading); CDC requires infrastructure complexity beyond the scope of this project; and upsert requires a reliable unique key per table, which is not naturally available across all six Silver tables. Generating a surrogate key via NEWID() would not survive a Bronze truncate-and-reload as it is non-deterministic. Truncate-and-reload is therefore the simplest correct approach for this dataset, and is idempotent by design.
 
 **CRM and ERP integration**
 - The join strategy between CRM and ERP tables is being determined through data profiling. Each table is being analysed individually before cross-system relationships are defined.
