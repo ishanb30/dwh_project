@@ -80,22 +80,18 @@ crm_cust_info_transformed AS (
             ELSE NULL
         END AS cst_lastname, 
         CASE
-            WHEN UPPER(cst_marital_status) = 'M' THEN 'Married'
-            WHEN UPPER(cst_marital_status) = 'S' THEN 'Single'
-            WHEN UPPER(cst_marital_status) = 'MARRIED' THEN 'Married'
-            WHEN UPPER(cst_marital_status) = 'SINGLE' THEN 'Single'
+            WHEN UPPER(cst_marital_status) IN ('M', 'MARRIED') THEN 'Married'
+            WHEN UPPER(cst_marital_status) IN ('S', 'SINGLE') THEN 'Single'
             WHEN UPPER(cst_marital_status) IS NOT NULL AND 
-                UPPER(cst_marital_status) NOT IN ('M','S','MARRIED','SINGLE')
+                UPPER(cst_marital_status) NOT IN ('M','MARRIED','S','SINGLE')
                 THEN 'Other'
             ELSE NULL
         END AS cst_marital_status,
         CASE
-            WHEN UPPER(cst_gndr) = 'M' THEN 'Male'
-            WHEN UPPER(cst_gndr) = 'F' THEN 'Female'
-            WHEN UPPER(cst_gndr) = 'MALE' THEN 'Male'
-            WHEN UPPER(cst_gndr) = 'FEMALE' THEN 'Female'
+            WHEN UPPER(cst_gndr) IN ('M', 'MALE') THEN 'Male'
+            WHEN UPPER(cst_gndr) IN ('F', 'FEMALE') THEN 'Female'
             WHEN UPPER(cst_gndr) IS NOT NULL AND
-                UPPER(cst_gndr) NOT IN ('M','F','MALE','FEMALE')
+                UPPER(cst_gndr) NOT IN ('M','MALE','F','FEMALE')
                 THEN 'Other'
             ELSE NULL
         END AS cst_gndr,

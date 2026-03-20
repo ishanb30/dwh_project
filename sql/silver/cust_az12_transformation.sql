@@ -55,12 +55,10 @@ erp_cust_az12_transformed AS(
         END AS cid,
         bdate,
         CASE
-            WHEN UPPER(gen) = 'M' THEN 'Male'
-            WHEN UPPER(gen) = 'F' THEN 'Female'
-            WHEN UPPER(gen) = 'MALE' THEN 'Male'
-            WHEN UPPER(gen) = 'FEMALE' THEN 'Female'
+            WHEN UPPER(gen) IN ('M', 'MALE') THEN 'Male'
+            WHEN UPPER(gen) IN ('F', 'FEMALE') THEN 'Female'
             WHEN UPPER(gen) IS NOT NULL AND
-                UPPER(gen) NOT IN ('M','S','MARRIED','SINGLE')
+                UPPER(gen) NOT IN ('M','MALE','F','FEMALE')
                 THEN 'Other'
             ELSE NULL
         END AS gen
