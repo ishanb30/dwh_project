@@ -4,6 +4,9 @@ Silver Transformation: erp_loc_a101
 ====================================
 
 Purpose:
+Creates a child stored procedure, that will be called from a master procedure
+to load the transformed data into the silver tables.
+
 Cleans and standardises the erp_loc_a101 source table for the Silver layer.
 Transformations are performed in stages using CTEs and include:
 
@@ -24,49 +27,61 @@ Assumptions/Limitations:
    past the Silver layer. A reference table would need to be available/
    provided in order to reliably standardise to the correct interpretation 
    of a 'cntry' value.
+
+2. Incomplete Data
+   The primary key is cid, so in any given row, if cid is NULL
+   the assumption is that it is unusable and unrecoverable, therefore 
+   it is are filtered out.
 */
 
 USE DataWarehouse;
 GO
 
-WITH erp_loc_a101_cleaned AS(
-    SELECT
-        NULLIF(TRIM(cid), '') AS cid,
-        NULLIF(TRIM(TRIM(CHAR(13) FROM cntry)), '') AS cntry
-    FROM
-        bronze.erp_loc_a101
-),
-erp_loc_a101_transformed AS(
-    SELECT
-        REPLACE(cid, '-', '') AS cid,
-        CASE
-            WHEN UPPER(cntry) IN ('AUSTRALIA','AU') THEN 'Australia'
-            WHEN UPPER(cntry) IN ('CANADA','CA') THEN 'Canada'            
-            WHEN UPPER(cntry) IN ('FRANCE','FR') THEN 'France'
-            WHEN UPPER(cntry) IN ('GERMANY','DE') THEN 'Germany'
-            WHEN UPPER(cntry) IN ('UNITED KINGDOM','GB','UK') THEN 'United Kingdom'
-            WHEN UPPER(cntry) IN ('UNITED STATES','USA','US') THEN 'United States'
-            WHEN UPPER(cntry) IS NOT NULL THEN 'n/a'
-            ELSE NULL
-        END AS cntry
-    FROM
-        erp_loc_a101_cleaned
-    WHERE
-        cid IS NOT NULL
-),
-erp_loc_a101_casted AS(
-    SELECT
-        CAST(cid AS VARCHAR(10)) AS cid,
-        CAST(cntry AS VARCHAR(14)) AS cntry
-    FROM
-        erp_loc_a101_transformed
-)
+CREATE OR ALTER PROC silver.load_erp_loc_a101
+AS
+BEGIN
+    TRUNCATE TABLE silver.erp_loc_a101;
 
-SELECT
-    cid,
-    cntry
-FROM
-    erp_loc_a101_casted
+    WITH erp_loc_a101_cleaned AS(
+        SELECT
+            NULLIF(TRIM(cid), '') AS cid,
+            NULLIF(TRIM(TRIM(CHAR(13) FROM cntry)), '') AS cntry
+        FROM
+            bronze.erp_loc_a101
+    ),
+    erp_loc_a101_transformed AS(
+        SELECT
+            REPLACE(cid, '-', '') AS cid,
+            CASE
+                WHEN UPPER(cntry) IN ('AUSTRALIA','AU') THEN 'Australia'
+                WHEN UPPER(cntry) IN ('CANADA','CA') THEN 'Canada'            
+                WHEN UPPER(cntry) IN ('FRANCE','FR') THEN 'France'
+                WHEN UPPER(cntry) IN ('GERMANY','DE') THEN 'Germany'
+                WHEN UPPER(cntry) IN ('UNITED KINGDOM','GB','UK') THEN 'United Kingdom'
+                WHEN UPPER(cntry) IN ('UNITED STATES','USA','US') THEN 'United States'
+                WHEN UPPER(cntry) IS NOT NULL THEN 'n/a'
+                ELSE NULL
+            END AS cntry
+        FROM
+            erp_loc_a101_cleaned
+        WHERE
+            cid IS NOT NULL
+    ),
+    erp_loc_a101_casted AS(
+        SELECT
+            CAST(cid AS VARCHAR(10)) AS cid,
+            CAST(cntry AS VARCHAR(14)) AS cntry
+        FROM
+            erp_loc_a101_transformed
+    )
+
+    INSERT INTO silver.erp_loc_a101
+    SELECT
+        cid,
+        cntry
+    FROM
+        erp_loc_a101_casted
+    ;
+END
 ;
-
 

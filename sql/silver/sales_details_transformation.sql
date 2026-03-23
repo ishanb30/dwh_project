@@ -1,9 +1,12 @@
 /*
-====================================
+========================================
 Silver Transformation: crm_sales_details
-====================================
+========================================
 
 Purpose:
+Creates a child stored procedure, that will be called from a master procedure
+to load the transformed data into the silver tables.
+
 Cleans and standardises the crm_sales_details source table for the Silver layer.
 Transformations are performed in stages using CTEs and include:
 
@@ -51,118 +54,126 @@ Assumptions:
 USE DataWarehouse;
 GO
 
-WITH crm_sales_details_cleaned AS(
-    SELECT
-        TRIM(sls_ord_num) AS sls_ord_num,
-        NULLIF(TRIM(sls_prd_key), '') AS sls_prd_key,
-        TRIM(sls_cust_id) AS sls_cust_id,
-        TRIM(sls_order_dt) AS sls_order_dt,
-        TRIM(sls_ship_dt) AS sls_ship_dt,
-        TRIM(sls_due_dt) AS sls_due_dt,
-        TRY_CAST(TRIM(sls_sales) AS DECIMAL(10,2)) AS sls_sales,
-        TRY_CAST(TRIM(sls_quantity) AS INT) AS sls_quantity,
-        ABS(TRY_CAST(TRIM(CHAR(13) FROM TRIM(sls_price)) AS DECIMAL(10,2))) AS sls_price
-    FROM
-        bronze.crm_sales_details
-),
-crm_sales_details_transformed AS(
-    SELECT
-        CASE 
-            WHEN sls_ord_num LIKE 'SO%' 
-            THEN SUBSTRING(sls_ord_num,3,LEN(sls_ord_num)) 
-            ELSE sls_ord_num 
-        END AS sls_ord_num,
-        sls_prd_key,
-        sls_cust_id,
-        TRY_CAST(
-            CASE
-                WHEN LEN(sls_order_dt) != 8
-                THEN NULL
-                ELSE CONCAT(
-                    LEFT(sls_order_dt, 4),'-',SUBSTRING(sls_order_dt,5,2),'-',SUBSTRING(sls_order_dt,7,2)
-                )
-            END AS DATE
-        ) AS sls_order_dt,
-        TRY_CAST(
-            CASE
-                WHEN LEN(sls_ship_dt) != 8
-                THEN NULL
-                ELSE CONCAT(
-                    LEFT(sls_ship_dt, 4),'-',SUBSTRING(sls_ship_dt,5,2),'-',SUBSTRING(sls_ship_dt,7,2)
-                )
-            END AS DATE
-        ) AS sls_ship_dt,
-        TRY_CAST(
-            CASE
-                WHEN LEN(sls_due_dt) != 8
-                THEN NULL
-                ELSE CONCAT(
-                    LEFT(sls_due_dt, 4),'-',SUBSTRING(sls_due_dt,5,2),'-',SUBSTRING(sls_due_dt,7,2)
-                )
-            END AS DATE
-        ) AS sls_due_dt,
-        CASE
-            WHEN sls_sales IS NULL
-            THEN sls_quantity * sls_price
-            ELSE sls_sales
-        END AS sls_sales,
-        sls_quantity,
-        TRY_CAST(
-            CASE
-                WHEN sls_price IS NULL
-                THEN ABS(sls_sales / sls_quantity)
-                ELSE sls_price
-            END AS DECIMAL(10,2)
-        ) AS sls_price
-    FROM
-        crm_sales_details_cleaned
-),
-crm_sales_details_discrepancy_handling AS(
-    SELECT
-        sls_ord_num,
-        sls_prd_key,
-        sls_cust_id,
-        sls_order_dt,
-        sls_ship_dt,
-        sls_due_dt,
-        CASE
-            WHEN sls_sales >= 0 AND sls_sales != sls_price * sls_quantity THEN sls_price * sls_quantity
-            WHEN sls_sales < 0 AND ABS(sls_sales) != sls_price * sls_quantity THEN -(sls_price * sls_quantity)
-            ELSE sls_sales
-        END AS sls_sales,
-        sls_quantity,
-        sls_price,
-        CASE
-            WHEN sls_sales IS NULL AND sls_price IS NULL
-            THEN 'Y'
-            ELSE 'N'
-        END AS sls_incomplete_financial_data
-    FROM
-        crm_sales_details_transformed
-    WHERE
-        sls_ord_num IS NOT NULL AND 
-        sls_prd_key IS NOT NULL
-),
-crm_sales_details_casted AS(
-    SELECT
-        TRY_CAST(sls_ord_num AS INT) AS sls_ord_num,
-        CAST(sls_prd_key AS VARCHAR(12)) AS sls_prd_key,
-        TRY_CAST(sls_cust_id AS INT) AS sls_cust_id,
-        sls_order_dt,
-        sls_ship_dt,
-        sls_due_dt,
-        sls_sales,
-        sls_quantity,
-        sls_price,
-        CAST(sls_incomplete_financial_data AS VARCHAR(1)) AS sls_incomplete_financial_data
-    FROM
-        crm_sales_details_discrepancy_handling
-)
+CREATE OR ALTER PROC silver.load_crm_sales_details
+AS
+BEGIN
+    TRUNCATE TABLE silver.crm_sales_details;
 
-SELECT
-    *
-FROM
-    crm_sales_details_casted
+    WITH crm_sales_details_cleaned AS(
+        SELECT
+            TRIM(sls_ord_num) AS sls_ord_num,
+            NULLIF(TRIM(sls_prd_key), '') AS sls_prd_key,
+            TRIM(sls_cust_id) AS sls_cust_id,
+            TRIM(sls_order_dt) AS sls_order_dt,
+            TRIM(sls_ship_dt) AS sls_ship_dt,
+            TRIM(sls_due_dt) AS sls_due_dt,
+            TRY_CAST(TRIM(sls_sales) AS DECIMAL(10,2)) AS sls_sales,
+            TRY_CAST(TRIM(sls_quantity) AS INT) AS sls_quantity,
+            ABS(TRY_CAST(TRIM(CHAR(13) FROM TRIM(sls_price)) AS DECIMAL(10,2))) AS sls_price
+        FROM
+            bronze.crm_sales_details
+    ),
+    crm_sales_details_transformed AS(
+        SELECT
+            CASE 
+                WHEN sls_ord_num LIKE 'SO%' 
+                THEN SUBSTRING(sls_ord_num,3,LEN(sls_ord_num)) 
+                ELSE sls_ord_num 
+            END AS sls_ord_num,
+            sls_prd_key,
+            sls_cust_id,
+            TRY_CAST(
+                CASE
+                    WHEN LEN(sls_order_dt) != 8
+                    THEN NULL
+                    ELSE CONCAT(
+                        LEFT(sls_order_dt, 4),'-',SUBSTRING(sls_order_dt,5,2),'-',SUBSTRING(sls_order_dt,7,2)
+                    )
+                END AS DATE
+            ) AS sls_order_dt,
+            TRY_CAST(
+                CASE
+                    WHEN LEN(sls_ship_dt) != 8
+                    THEN NULL
+                    ELSE CONCAT(
+                        LEFT(sls_ship_dt, 4),'-',SUBSTRING(sls_ship_dt,5,2),'-',SUBSTRING(sls_ship_dt,7,2)
+                    )
+                END AS DATE
+            ) AS sls_ship_dt,
+            TRY_CAST(
+                CASE
+                    WHEN LEN(sls_due_dt) != 8
+                    THEN NULL
+                    ELSE CONCAT(
+                        LEFT(sls_due_dt, 4),'-',SUBSTRING(sls_due_dt,5,2),'-',SUBSTRING(sls_due_dt,7,2)
+                    )
+                END AS DATE
+            ) AS sls_due_dt,
+            CASE
+                WHEN sls_sales IS NULL
+                THEN sls_quantity * sls_price
+                ELSE sls_sales
+            END AS sls_sales,
+            sls_quantity,
+            TRY_CAST(
+                CASE
+                    WHEN sls_price IS NULL
+                    THEN ABS(sls_sales / sls_quantity)
+                    ELSE sls_price
+                END AS DECIMAL(10,2)
+            ) AS sls_price
+        FROM
+            crm_sales_details_cleaned
+    ),
+    crm_sales_details_discrepancy_handling AS(
+        SELECT
+            sls_ord_num,
+            sls_prd_key,
+            sls_cust_id,
+            sls_order_dt,
+            sls_ship_dt,
+            sls_due_dt,
+            CASE
+                WHEN sls_sales >= 0 AND sls_sales != sls_price * sls_quantity THEN sls_price * sls_quantity
+                WHEN sls_sales < 0 AND ABS(sls_sales) != sls_price * sls_quantity THEN -(sls_price * sls_quantity)
+                ELSE sls_sales
+            END AS sls_sales,
+            sls_quantity,
+            sls_price,
+            CASE
+                WHEN sls_sales IS NULL AND sls_price IS NULL
+                THEN 'Y'
+                ELSE 'N'
+            END AS sls_incomplete_financial_data
+        FROM
+            crm_sales_details_transformed
+        WHERE
+            sls_ord_num IS NOT NULL AND 
+            sls_prd_key IS NOT NULL
+    ),
+    crm_sales_details_casted AS(
+        SELECT
+            TRY_CAST(sls_ord_num AS INT) AS sls_ord_num,
+            CAST(sls_prd_key AS VARCHAR(12)) AS sls_prd_key,
+            TRY_CAST(sls_cust_id AS INT) AS sls_cust_id,
+            sls_order_dt,
+            sls_ship_dt,
+            sls_due_dt,
+            sls_sales,
+            sls_quantity,
+            sls_price,
+            CAST(sls_incomplete_financial_data AS VARCHAR(1)) AS sls_incomplete_financial_data
+        FROM
+            crm_sales_details_discrepancy_handling
+    )
+
+    INSERT INTO silver.crm_sales_details
+    SELECT
+        *
+    FROM
+        crm_sales_details_casted
+    ;
+END
 ;
 
  

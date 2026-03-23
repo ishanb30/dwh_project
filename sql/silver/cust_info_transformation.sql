@@ -4,6 +4,9 @@ Silver Transformation: crm_cust_info
 ====================================
 
 Purpose:
+Creates a child stored procedure, that will be called from a master procedure
+to load the transformed data into the silver tables.
+
 Cleans and standardises the crm_cust_info source table for the Silver layer.
 The script performs staged transformations using CTEs, including:
 
@@ -50,117 +53,138 @@ Assumptions:
 USE DataWarehouse;
 GO
 
-WITH crm_cust_info_cleaned AS (
-    SELECT
-        TRIM(cst_id) AS cst_id, 
-        NULLIF(TRIM(cst_key), '') AS cst_key, 
-        NULLIF(TRIM(cst_firstname), '') AS cst_firstname, 
-        NULLIF(TRIM(cst_lastname), '') AS cst_lastname,
-        NULLIF(UPPER(TRIM(cst_marital_status)), '') AS cst_marital_status,
-        NULLIF(UPPER(TRIM(cst_gndr)), '') AS cst_gndr,
-        TRIM(CHAR(13) FROM TRIM(cst_create_date)) AS cst_create_date
-    FROM
-        bronze.crm_cust_info
-),
-crm_cust_info_transformed AS (
-    SELECT
-        cst_id, 
-        cst_key, 
-        CASE 
-            WHEN cst_firstname IS NOT NULL THEN (
-                CONCAT(
-                    UPPER(LEFT(cst_firstname, 1)),
-                    LOWER(SUBSTRING(cst_firstname, 2, LEN(cst_firstname)))
+CREATE OR ALTER PROC silver.load_crm_cust_info
+AS
+BEGIN
+    TRUNCATE TABLE silver.crm_cust_info;
+
+    WITH crm_cust_info_cleaned AS (
+        SELECT
+            TRIM(cst_id) AS cst_id, 
+            NULLIF(TRIM(cst_key), '') AS cst_key, 
+            NULLIF(TRIM(cst_firstname), '') AS cst_firstname, 
+            NULLIF(TRIM(cst_lastname), '') AS cst_lastname,
+            NULLIF(UPPER(TRIM(cst_marital_status)), '') AS cst_marital_status,
+            NULLIF(UPPER(TRIM(cst_gndr)), '') AS cst_gndr,
+            TRIM(CHAR(13) FROM TRIM(cst_create_date)) AS cst_create_date
+        FROM
+            bronze.crm_cust_info
+    ),
+    crm_cust_info_transformed AS (
+        SELECT
+            cst_id, 
+            cst_key, 
+            CASE 
+                WHEN cst_firstname IS NOT NULL THEN (
+                    CONCAT(
+                        UPPER(LEFT(cst_firstname, 1)),
+                        LOWER(SUBSTRING(cst_firstname, 2, LEN(cst_firstname)))
+                    )
                 )
-            )
-            ELSE NULL
-        END AS cst_firstname, 
-        CASE 
-            WHEN cst_lastname IS NOT NULL THEN (
-                CONCAT(
-                    UPPER(LEFT(cst_lastname, 1)),
-                    LOWER(SUBSTRING(cst_lastname, 2, LEN(cst_lastname)))
+                ELSE NULL
+            END AS cst_firstname, 
+            CASE 
+                WHEN cst_lastname IS NOT NULL THEN (
+                    CONCAT(
+                        UPPER(LEFT(cst_lastname, 1)),
+                        LOWER(SUBSTRING(cst_lastname, 2, LEN(cst_lastname)))
+                    )
                 )
-            )
-            ELSE NULL
-        END AS cst_lastname, 
-        CASE
-            WHEN UPPER(cst_marital_status) IN ('M', 'MARRIED') THEN 'Married'
-            WHEN UPPER(cst_marital_status) IN ('S', 'SINGLE') THEN 'Single'
-            WHEN UPPER(cst_marital_status) IS NOT NULL AND 
-                UPPER(cst_marital_status) NOT IN ('M','MARRIED','S','SINGLE')
-                THEN 'Other'
-            ELSE NULL
-        END AS cst_marital_status,
-        CASE
-            WHEN UPPER(cst_gndr) IN ('M', 'MALE') THEN 'Male'
-            WHEN UPPER(cst_gndr) IN ('F', 'FEMALE') THEN 'Female'
-            WHEN UPPER(cst_gndr) IS NOT NULL AND
-                UPPER(cst_gndr) NOT IN ('M','MALE','F','FEMALE')
-                THEN 'Other'
-            ELSE NULL
-        END AS cst_gndr,
-        cst_create_date
-    FROM
-        crm_cust_info_cleaned
-),
-crm_cust_info_casted AS (
-    SELECT
-        TRY_CAST(cst_id AS INT) AS cst_id, 
-        CAST(cst_key AS VARCHAR(10)) AS cst_key, 
-        CAST(cst_firstname AS VARCHAR(45)) AS cst_firstname, 
-        CAST(cst_lastname AS VARCHAR(45)) AS cst_lastname,
-        CAST(cst_marital_status AS VARCHAR(7)) AS cst_marital_status,
-        CAST(cst_gndr AS VARCHAR (6)) AS cst_gndr,
-        TRY_CAST(cst_create_date AS DATE) AS cst_create_date
-    FROM
-        crm_cust_info_transformed
-),
-duplicate_cust_key AS(
-    SELECT
-        *,
-        COUNT(*) OVER(PARTITION BY cst_key) AS dup_count
-    FROM
-        crm_cust_info_casted
-),
-total_duplicate_list AS(
-    SELECT
-        cst_id, 
-        cst_key, 
-        cst_firstname, 
-        cst_lastname,
-        cst_marital_status,
-        cst_gndr,
-        cst_create_date,
-        (CASE WHEN cst_firstname IS NULL THEN 1 ELSE 0 END +
-        CASE WHEN cst_lastname IS NULL THEN 1 ELSE 0 END +
-        CASE WHEN cst_marital_status IS NULL THEN 1 ELSE 0 END +
-        CASE WHEN cst_gndr IS NULL THEN 1 ELSE 0 END) AS null_count
-    FROM (
-        SELECT *
-        FROM duplicate_cust_key
-        WHERE dup_count > 1
-    ) a
-),
-least_nulls_check AS(
-    SELECT
-        *,
-        MIN(null_count) OVER (PARTITION BY cst_key) AS least_nulls
-    FROM
-        total_duplicate_list
-),
-latest_date_check AS (
-    SELECT
-        *,
-        MAX(cst_create_date) OVER (PARTITION BY cst_key) AS latest_date
-    FROM
-        least_nulls_check
-    WHERE 
-        null_count = least_nulls AND
-        cst_create_date IS NOT NULL AND
-        cst_id IS NOT NULL
-),
-non_duplicates AS (
+                ELSE NULL
+            END AS cst_lastname, 
+            CASE
+                WHEN UPPER(cst_marital_status) IN ('M', 'MARRIED') THEN 'Married'
+                WHEN UPPER(cst_marital_status) IN ('S', 'SINGLE') THEN 'Single'
+                WHEN UPPER(cst_marital_status) IS NOT NULL AND 
+                    UPPER(cst_marital_status) NOT IN ('M','MARRIED','S','SINGLE')
+                    THEN 'Other'
+                ELSE NULL
+            END AS cst_marital_status,
+            CASE
+                WHEN UPPER(cst_gndr) IN ('M', 'MALE') THEN 'Male'
+                WHEN UPPER(cst_gndr) IN ('F', 'FEMALE') THEN 'Female'
+                WHEN UPPER(cst_gndr) IS NOT NULL AND
+                    UPPER(cst_gndr) NOT IN ('M','MALE','F','FEMALE')
+                    THEN 'Other'
+                ELSE NULL
+            END AS cst_gndr,
+            cst_create_date
+        FROM
+            crm_cust_info_cleaned
+    ),
+    crm_cust_info_casted AS (
+        SELECT
+            TRY_CAST(cst_id AS INT) AS cst_id, 
+            CAST(cst_key AS VARCHAR(10)) AS cst_key, 
+            CAST(cst_firstname AS VARCHAR(45)) AS cst_firstname, 
+            CAST(cst_lastname AS VARCHAR(45)) AS cst_lastname,
+            CAST(cst_marital_status AS VARCHAR(7)) AS cst_marital_status,
+            CAST(cst_gndr AS VARCHAR (6)) AS cst_gndr,
+            TRY_CAST(cst_create_date AS DATE) AS cst_create_date
+        FROM
+            crm_cust_info_transformed
+    ),
+    duplicate_cust_key AS(
+        SELECT
+            *,
+            COUNT(*) OVER(PARTITION BY cst_key) AS dup_count
+        FROM
+            crm_cust_info_casted
+    ),
+    total_duplicate_list AS(
+        SELECT
+            cst_id, 
+            cst_key, 
+            cst_firstname, 
+            cst_lastname,
+            cst_marital_status,
+            cst_gndr,
+            cst_create_date,
+            (CASE WHEN cst_firstname IS NULL THEN 1 ELSE 0 END +
+            CASE WHEN cst_lastname IS NULL THEN 1 ELSE 0 END +
+            CASE WHEN cst_marital_status IS NULL THEN 1 ELSE 0 END +
+            CASE WHEN cst_gndr IS NULL THEN 1 ELSE 0 END) AS null_count
+        FROM (
+            SELECT *
+            FROM duplicate_cust_key
+            WHERE dup_count > 1
+        ) a
+    ),
+    least_nulls_check AS(
+        SELECT
+            *,
+            MIN(null_count) OVER (PARTITION BY cst_key) AS least_nulls
+        FROM
+            total_duplicate_list
+    ),
+    latest_date_check AS (
+        SELECT
+            *,
+            MAX(cst_create_date) OVER (PARTITION BY cst_key) AS latest_date
+        FROM
+            least_nulls_check
+        WHERE 
+            null_count = least_nulls AND
+            cst_create_date IS NOT NULL AND
+            cst_id IS NOT NULL
+    ),
+    non_duplicates AS (
+        SELECT
+            cst_id,
+            cst_key,
+            cst_firstname,
+            cst_lastname,
+            cst_marital_status,
+            cst_gndr,
+            cst_create_date
+        FROM
+            duplicate_cust_key
+        WHERE
+            cst_id IS NOT NULL AND
+            dup_count = 1
+    )
+
+    INSERT INTO silver.crm_cust_info
     SELECT
         cst_id,
         cst_key,
@@ -170,37 +194,21 @@ non_duplicates AS (
         cst_gndr,
         cst_create_date
     FROM
-        duplicate_cust_key
+        latest_date_check
     WHERE
-        cst_id IS NOT NULL AND
-        dup_count = 1
-)
-
-SELECT
-    cst_id,
-    cst_key,
-    cst_firstname,
-    cst_lastname,
-    cst_marital_status,
-    cst_gndr,
-    cst_create_date
-FROM
-    latest_date_check
-WHERE
-    cst_create_date = latest_date
+        cst_create_date = latest_date
 
 
-UNION ALL
+    UNION ALL
 
 
-SELECT
-    *
-FROM
-    non_duplicates
-ORDER BY
-    cst_id
+    SELECT
+        *
+    FROM
+        non_duplicates
+    ;
+END
 ;
-
 
 
 

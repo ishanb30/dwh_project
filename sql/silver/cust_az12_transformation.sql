@@ -4,6 +4,9 @@ Silver Transformation: erp_cust_az12
 ====================================
 
 Purpose:
+Creates a child stored procedure, that will be called from a master procedure
+to load the transformed data into the silver tables.
+
 Cleans and standardises the erp_cust_az12 source table for the Silver layer.
 Transformations are performed in stages using CTEs and include:
 
@@ -42,47 +45,55 @@ Assumptions:
 USE DataWarehouse;
 GO
 
-WITH erp_cust_az12_cleaned AS(
-    SELECT
-        NULLIF(TRIM(cid), '') AS cid,
-        TRIM(bdate) AS bdate,
-        NULLIF(TRIM(TRIM(CHAR(13) FROM gen)), '') AS gen
-    FROM
-        bronze.erp_cust_az12
-),
-erp_cust_az12_transformed AS(
-    SELECT
-        CASE
-            WHEN CHARINDEX('AW', cid) > 0 THEN SUBSTRING(
-                cid, CHARINDEX('AW', cid), LEN(cid)
-            )
-            ELSE NULL
-        END AS cid,
-        bdate,
-        CASE
-            WHEN UPPER(gen) IN ('M', 'MALE') THEN 'Male'
-            WHEN UPPER(gen) IN ('F', 'FEMALE') THEN 'Female'
-            WHEN UPPER(gen) IS NOT NULL AND
-                UPPER(gen) NOT IN ('M','MALE','F','FEMALE')
-                THEN 'Other'
-            ELSE NULL
-        END AS gen
-    FROM
-        erp_cust_az12_cleaned
-    WHERE
-        cid IS NOT NULL
-),
-erp_cust_az12_casted AS(
-    SELECT
-        CAST(cid AS VARCHAR(10)) AS cid,
-        TRY_CAST(bdate AS DATE) AS bdate,
-        CAST(gen AS VARCHAR(6)) AS gen
-    FROM
-        erp_cust_az12_transformed
-)
+CREATE OR ALTER PROC silver.load_erp_cust_az12
+AS
+BEGIN
+    TRUNCATE TABLE silver.erp_cust_az12;
 
-SELECT
-    *
-FROM
-    erp_cust_az12_casted
+    WITH erp_cust_az12_cleaned AS(
+        SELECT
+            NULLIF(TRIM(cid), '') AS cid,
+            TRIM(bdate) AS bdate,
+            NULLIF(TRIM(TRIM(CHAR(13) FROM gen)), '') AS gen
+        FROM
+            bronze.erp_cust_az12
+    ),
+    erp_cust_az12_transformed AS(
+        SELECT
+            CASE
+                WHEN CHARINDEX('AW', cid) > 0 THEN SUBSTRING(
+                    cid, CHARINDEX('AW', cid), LEN(cid)
+                )
+                ELSE NULL
+            END AS cid,
+            bdate,
+            CASE
+                WHEN UPPER(gen) IN ('M', 'MALE') THEN 'Male'
+                WHEN UPPER(gen) IN ('F', 'FEMALE') THEN 'Female'
+                WHEN UPPER(gen) IS NOT NULL AND
+                    UPPER(gen) NOT IN ('M','MALE','F','FEMALE')
+                    THEN 'Other'
+                ELSE NULL
+            END AS gen
+        FROM
+            erp_cust_az12_cleaned
+        WHERE
+            cid IS NOT NULL
+    ),
+    erp_cust_az12_casted AS(
+        SELECT
+            CAST(cid AS VARCHAR(10)) AS cid,
+            TRY_CAST(bdate AS DATE) AS bdate,
+            CAST(gen AS VARCHAR(6)) AS gen
+        FROM
+            erp_cust_az12_transformed
+    )
+
+    INSERT INTO silver.erp_cust_az12
+    SELECT
+        *
+    FROM
+        erp_cust_az12_casted
+    ;
+END
 ;

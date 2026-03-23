@@ -4,6 +4,9 @@ Silver Transformation: crm_prd_info
 ====================================
 
 Purpose:
+Creates a child stored procedure, that will be called from a master procedure
+to load the transformed data into the silver tables.
+
 Cleans and standardises the crm_prd_info source table for the Silver layer.
 Transformations are performed in stages using CTEs and include:
 
@@ -67,95 +70,101 @@ Assumptions:
 USE DataWarehouse;
 GO
 
-WITH crm_prd_info_cleaned AS(
-    SELECT
-        TRIM(prd_id) AS prd_id,
-        NULLIF(TRIM(prd_key), '') AS prd_key,
-        NULLIF(TRIM(prd_nm), '') AS prd_nm,
-        TRY_CAST(ABS(TRIM(prd_cost)) AS DECIMAL(10,2)) AS prd_cost,
-        NULLIF(UPPER(TRIM(prd_line)), '') AS prd_line,
-        TRIM(prd_start_dt) AS prd_start_dt,
-        TRIM(CHAR(13) FROM TRIM(prd_end_dt)) AS prd_end_dt
-    FROM
-        bronze.crm_prd_info
-),
-crm_prd_info_transformed AS(
-    SELECT
-        prd_id,
-        prd_key AS original_prd_key,
-        REPLACE(LEFT(prd_key, 5),'-','_') AS cat_id,
-        SUBSTRING(prd_key, 7, LEN(prd_key)) AS prd_key,
-        prd_nm,
-        prd_cost,
-        CASE
-            WHEN UPPER(prd_line) = 'M' THEN 'Mountain'
-            WHEN UPPER(prd_line) = 'R' THEN 'Road'
-            WHEN UPPER(prd_line) = 'T' THEN 'Touring'
-            WHEN UPPER(prd_line) = 'S' THEN 'Miscellaneous'
-            WHEN UPPER(prd_line) IS NOT NULL AND
-                UPPER(prd_line) NOT IN ('M','R','T','S')
-                THEN 'n/a'
-            ELSE NULL
-        END AS prd_line,
-        prd_start_dt,
-        prd_end_dt
-    FROM
-        crm_prd_info_cleaned        
-),
-crm_prd_info_casted AS(
-    SELECT
-        TRY_CAST(prd_id AS INT) AS prd_id,
-        CAST(original_prd_key AS VARCHAR(18)) AS original_prd_key,
-        CAST(cat_id AS VARCHAR(5)) AS cat_id,
-        CAST(prd_key AS VARCHAR(14)) AS prd_key,
-        CAST(prd_nm AS VARCHAR(50)) AS prd_nm,
-        prd_cost,
-        CAST(prd_line AS VARCHAR(13)) AS prd_line,
-        TRY_CAST(prd_start_dt AS DATE) AS prd_start_dt,
-        TRY_CAST(prd_end_dt AS DATE) AS prd_end_dt
-    FROM
-        crm_prd_info_transformed
-),
-updated_end_date AS(
-    SELECT
-        prd_id,
-        cat_id,
-        prd_key,
-        prd_nm,
-        prd_cost,
-        prd_line,
-        prd_start_dt,
-        prd_end_dt,
-        LEAD(DATEADD(day, -1, prd_start_dt)) OVER(PARTITION BY original_prd_key ORDER BY prd_id) AS new_prd_end_dt
-    FROM
-        crm_prd_info_casted
-),
-end_date_condition AS(
-    SELECT
-        prd_id,
-        cat_id,
-        prd_key,
-        prd_nm,
-        prd_cost,
-        prd_line,
-        prd_start_dt,
-        CASE
-            WHEN prd_start_dt > prd_end_dt
-            THEN new_prd_end_dt
-            ELSE prd_end_dt
-        END AS prd_end_dt
-    FROM
-        updated_end_date
-    WHERE
-        prd_id IS NOT NULL
-)
+CREATE OR ALTER PROC silver.load_crm_prd_info
+AS
+BEGIN
+    TRUNCATE TABLE silver.crm_prd_info;
 
-SELECT
-    *
-FROM
-    end_date_condition
-ORDER BY
-    prd_id
+    WITH crm_prd_info_cleaned AS(
+        SELECT
+            TRIM(prd_id) AS prd_id,
+            NULLIF(TRIM(prd_key), '') AS prd_key,
+            NULLIF(TRIM(prd_nm), '') AS prd_nm,
+            TRY_CAST(ABS(TRIM(prd_cost)) AS DECIMAL(10,2)) AS prd_cost,
+            NULLIF(UPPER(TRIM(prd_line)), '') AS prd_line,
+            TRIM(prd_start_dt) AS prd_start_dt,
+            TRIM(CHAR(13) FROM TRIM(prd_end_dt)) AS prd_end_dt
+        FROM
+            bronze.crm_prd_info
+    ),
+    crm_prd_info_transformed AS(
+        SELECT
+            prd_id,
+            prd_key AS original_prd_key,
+            REPLACE(LEFT(prd_key, 5),'-','_') AS cat_id,
+            SUBSTRING(prd_key, 7, LEN(prd_key)) AS prd_key,
+            prd_nm,
+            prd_cost,
+            CASE
+                WHEN UPPER(prd_line) = 'M' THEN 'Mountain'
+                WHEN UPPER(prd_line) = 'R' THEN 'Road'
+                WHEN UPPER(prd_line) = 'T' THEN 'Touring'
+                WHEN UPPER(prd_line) = 'S' THEN 'Miscellaneous'
+                WHEN UPPER(prd_line) IS NOT NULL AND
+                    UPPER(prd_line) NOT IN ('M','R','T','S')
+                    THEN 'n/a'
+                ELSE NULL
+            END AS prd_line,
+            prd_start_dt,
+            prd_end_dt
+        FROM
+            crm_prd_info_cleaned        
+    ),
+    crm_prd_info_casted AS(
+        SELECT
+            TRY_CAST(prd_id AS INT) AS prd_id,
+            CAST(original_prd_key AS VARCHAR(18)) AS original_prd_key,
+            CAST(cat_id AS VARCHAR(5)) AS cat_id,
+            CAST(prd_key AS VARCHAR(14)) AS prd_key,
+            CAST(prd_nm AS VARCHAR(50)) AS prd_nm,
+            prd_cost,
+            CAST(prd_line AS VARCHAR(13)) AS prd_line,
+            TRY_CAST(prd_start_dt AS DATE) AS prd_start_dt,
+            TRY_CAST(prd_end_dt AS DATE) AS prd_end_dt
+        FROM
+            crm_prd_info_transformed
+    ),
+    updated_end_date AS(
+        SELECT
+            prd_id,
+            cat_id,
+            prd_key,
+            prd_nm,
+            prd_cost,
+            prd_line,
+            prd_start_dt,
+            prd_end_dt,
+            LEAD(DATEADD(day, -1, prd_start_dt)) OVER(PARTITION BY original_prd_key ORDER BY prd_id) AS new_prd_end_dt
+        FROM
+            crm_prd_info_casted
+    ),
+    end_date_condition AS(
+        SELECT
+            prd_id,
+            cat_id,
+            prd_key,
+            prd_nm,
+            prd_cost,
+            prd_line,
+            prd_start_dt,
+            CASE
+                WHEN prd_start_dt > prd_end_dt
+                THEN new_prd_end_dt
+                ELSE prd_end_dt
+            END AS prd_end_dt
+        FROM
+            updated_end_date
+        WHERE
+            prd_id IS NOT NULL
+    )
+
+    INSERT INTO silver.crm_prd_info
+    SELECT
+        *
+    FROM
+        end_date_condition
+    ;
+END
 ;
 
 

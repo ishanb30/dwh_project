@@ -1,9 +1,12 @@
 /*
-====================================
-Silver Transformation: px_cat_g1v2
-====================================
+======================================
+Silver Transformation: erp_px_cat_g1v2
+======================================
 
 Purpose:
+Creates a child stored procedure, that will be called from a master procedure
+to load the transformed data into the silver tables.
+
 Cleans and standardises the px_cat_g1v2 source table for the Silver layer.
 Transformations are performed in stages using CTEs and include:
 
@@ -42,42 +45,50 @@ Assumptions/Limitations:
 USE DataWarehouse;
 GO
 
-WITH px_cat_g1v2_cleaned AS(
-    SELECT
-        NULLIF(TRIM(id), '') AS id,
-        NULLIF(TRIM(cat), '') AS cat,
-        NULLIF(TRIM(subcat), '') AS subcat,
-        NULLIF(TRIM(TRIM(CHAR(13) FROM maintenance)), '') AS maintenance
-    FROM
-        bronze.erp_px_cat_g1v2
-),
-px_cat_g1v2_transformed AS(
-    SELECT
-        id,
-        cat,
-        subcat,
-        CASE
-            WHEN UPPER(maintenance) IN ('Y', 'YES') THEN 'Yes'
-            WHEN UPPER(maintenance) IN ('N', 'NO') THEN 'No'
-            ELSE NULL
-        END AS maintenance
-    FROM
-        px_cat_g1v2_cleaned
-    WHERE
-        id IS NOT NULL
-),
-px_cat_g1v2_casted AS(
-    SELECT
-        CAST(id AS VARCHAR(5)) AS id,
-        CAST(cat AS VARCHAR(11)) AS cat,
-        CAST(subcat AS VARCHAR(17)) AS subcat,
-        CAST(maintenance AS VARCHAR(3)) AS maintenance
-    FROM
-        px_cat_g1v2_transformed
-)
+CREATE OR ALTER PROC silver.load_erp_px_cat_g1v2
+AS
+BEGIN
+    TRUNCATE TABLE silver.erp_px_cat_g1v2;
+    
+    WITH px_cat_g1v2_cleaned AS(
+        SELECT
+            NULLIF(TRIM(id), '') AS id,
+            NULLIF(TRIM(cat), '') AS cat,
+            NULLIF(TRIM(subcat), '') AS subcat,
+            NULLIF(TRIM(TRIM(CHAR(13) FROM maintenance)), '') AS maintenance
+        FROM
+            bronze.erp_px_cat_g1v2
+    ),
+    px_cat_g1v2_transformed AS(
+        SELECT
+            id,
+            cat,
+            subcat,
+            CASE
+                WHEN UPPER(maintenance) IN ('Y', 'YES') THEN 'Yes'
+                WHEN UPPER(maintenance) IN ('N', 'NO') THEN 'No'
+                ELSE NULL
+            END AS maintenance
+        FROM
+            px_cat_g1v2_cleaned
+        WHERE
+            id IS NOT NULL
+    ),
+    px_cat_g1v2_casted AS(
+        SELECT
+            CAST(id AS VARCHAR(5)) AS id,
+            CAST(cat AS VARCHAR(11)) AS cat,
+            CAST(subcat AS VARCHAR(17)) AS subcat,
+            CAST(maintenance AS VARCHAR(3)) AS maintenance
+        FROM
+            px_cat_g1v2_transformed
+    )
 
-SELECT
-    *
-FROM
-    px_cat_g1v2_casted
+    INSERT INTO silver.erp_px_cat_g1v2
+    SELECT
+        *
+    FROM
+        px_cat_g1v2_casted
+    ;
+END
 ;
