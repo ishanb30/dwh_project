@@ -29,7 +29,12 @@ Assumptions:
    - The record with the latest prd_start_dt for a given prd_key has
      a NULL prd_end_dt, representing the currently active product.
 
-2. Product Line Standardisation
+2. Incomplete Data
+   The primary key is prd_id, so in any given row, if prd_id is NULL
+   the assumption is that it is unusable and unrecoverable, therefore 
+   it is are filtered out.
+
+3. Product Line Standardisation
    The prd_line field contains abbreviated codes (e.g. "M"). These are
    expanded into descriptive categories using keywords from prd_nm.
 
@@ -37,17 +42,17 @@ Assumptions:
    prd_nm: "Mountain Bike Socks - M"
    prd_line: "M" → "Mountain"
 
-3. Product Cost
+4. Product Cost
    Negative values in prd_cost are treated as sign errors in the source
    system. The ABS() function is applied so that all cost values are
    stored as positive numbers.
 
-4. Date Cleaning
+5. Date Cleaning
    The source prd_end_dt field contains a trailing carriage return
    character (\r) introduced during ingestion. LEFT() is used to remove
    this character before casting to a DATE data type.
 
-5. prd_line Mapping
+6. prd_line Mapping
    In the value set, 'M', 'R', and 'T' were derived from prd_nm. 'S' was
    unable to be mapped to a specific word, so 'Other' was used. Derivations
    like this would be usually be handled in the Gold layer, but in real

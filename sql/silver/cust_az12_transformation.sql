@@ -28,6 +28,11 @@ Assumptions:
    TRY_CAST to cast bdate to a DATE field, it will return NULL for any dates that
    break the date format.
 
+3. Incomplete Data
+   The primary key is cid, so in any given row, if cid is NULL
+   the assumption is that it is unusable and unrecoverable, therefore 
+   it is are filtered out.
+
 3. gen Value Set
    For both 'gen', any values not in the value set are labelled as 'Other'. 
    This is not a derivation, but instead a naming convention. Therefore, it
@@ -64,6 +69,8 @@ erp_cust_az12_transformed AS(
         END AS gen
     FROM
         erp_cust_az12_cleaned
+    WHERE
+        cid IS NOT NULL
 ),
 erp_cust_az12_casted AS(
     SELECT

@@ -51,6 +51,8 @@ erp_loc_a101_transformed AS(
         END AS cntry
     FROM
         erp_loc_a101_cleaned
+    WHERE
+        cid IS NOT NULL
 ),
 erp_loc_a101_casted AS(
     SELECT

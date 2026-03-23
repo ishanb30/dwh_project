@@ -36,6 +36,11 @@ Assumptions:
    character (\r) introduced during ingestion. LEFT() is used to remove
    this character before casting to a DATE type.
 
+3. Incomplete Data
+   The primary key is cst_id, so in any given row, if cst_id is NULL
+   the assumption is that it is unusable and unrecoverable, therefore 
+   it is are filtered out.
+
 3. Non Value Set Values
    For both 'cst_marital_status' and 'cst_gndr', any values not in the value
    set are labelled as 'Other'. This is not a derivation, but instead a naming

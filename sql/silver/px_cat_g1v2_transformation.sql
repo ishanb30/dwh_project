@@ -32,6 +32,11 @@ Assumptions/Limitations:
    this conceptually (with the current tech stack of SQL Server and Python), a 
    data validation script will be run in Python and a second round of Silver
    layer transformations will take place if anything is flagged.
+
+3. Incomplete Data
+   The primary key is id, so in any given row, if id is NULL
+   the assumption is that it is unusable and unrecoverable, therefore 
+   it is are filtered out.
 */
 
 USE DataWarehouse;
@@ -58,6 +63,8 @@ px_cat_g1v2_transformed AS(
         END AS maintenance
     FROM
         px_cat_g1v2_cleaned
+    WHERE
+        id IS NOT NULL
 ),
 px_cat_g1v2_casted AS(
     SELECT

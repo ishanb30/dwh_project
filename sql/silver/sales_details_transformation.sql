@@ -30,6 +30,10 @@ Assumptions:
    it is used in calculations without any transformations.
 
 3. Incomplete Data
+   The composite key comprises sls_ord_num and sls_prd_key. In any given row 
+   either of them are NULL, the assumption is that they are unusable and
+   unrecoverable, so they are filtered out.
+   
    In a given row, if both sls_sales and sls_price are NULLs, then there is no
    way to derive either sls_sales or sls_price, so it is deemed incomplete
    data and will be handled in the Gold layer.
@@ -135,6 +139,9 @@ crm_sales_details_discrepancy_handling AS(
         END AS sls_incomplete_financial_data
     FROM
         crm_sales_details_transformed
+    WHERE
+        sls_ord_num IS NOT NULL AND 
+        sls_prd_key IS NOT NULL
 ),
 crm_sales_details_casted AS(
     SELECT
