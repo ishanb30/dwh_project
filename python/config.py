@@ -1,13 +1,15 @@
 """
-Establish connection to SQL Server
-
+Establish connection to SQL Server:
 Provides a function to return a pyodbc connection
 object using environment variables for credentials
+
+Create a cursor:
+Provides a function to return both a connection
+and a cursor for executing SQL queries
 """
 
 import os
 import pyodbc
-from pathlib import Path
 
 def get_connection():
     server = os.environ.get('DB_SERVER')
@@ -24,11 +26,10 @@ def get_connection():
         f'Encrypt=yes;TrustServerCertificate=yes;'
     )
 
-#File path names
-BASE_DIR = Path(__file__).resolve().parent.parent
 
-SQL_BRONZE_DIR = BASE_DIR / "sql" / "bronze"
-BRONZE_LOAD_CHECK = SQL_BRONZE_DIR / "load_orchestration_check.sql"
+def get_cursor():
+    conn = get_connection()
+    cursor = conn.cursor()
+    return conn, cursor
 
 
-SOURCE_CSV_DIR = BASE_DIR / "source"
