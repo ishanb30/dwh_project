@@ -8,7 +8,7 @@ Linux.
 """
 
 import subprocess
-from config import SOURCE_CSV_DIR
+from paths import SOURCE_CSV_DIR
 
 def run_source_to_docker():
     try:

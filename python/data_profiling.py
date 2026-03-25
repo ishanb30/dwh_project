@@ -10,8 +10,8 @@ Outputs: data_profiling_results.csv with one row per column across all files.
 
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
-from config import BASE_DIR
-from config import SOURCE_CSV_DIR
+from paths import BASE_DIR
+from paths import SOURCE_CSV_DIR
 
 def length_and_numeric_checks(series, temp_numeric):
     length = series.dropna().astype(str).str.len()

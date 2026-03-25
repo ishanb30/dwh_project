@@ -5,8 +5,8 @@ Runs the Bronze layer pipeline. Detects
 and raises errors for upstream handling
 """
 
-from cursor import get_cursor
-from config import BRONZE_LOAD_CHECK
+from config import get_cursor
+from paths import BRONZE_LOAD_CHECK
 
 class BronzePipelineFailed(Exception):
     def __init__(self, proc_name, error_class, error_message):

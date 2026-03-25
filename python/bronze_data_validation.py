@@ -7,9 +7,9 @@ and validation status.
 """
 
 import pandas as pd
-from config import SOURCE_CSV_DIR
-from config import BRONZE_LOAD_CHECK
-from cursor import get_cursor
+from paths import SOURCE_CSV_DIR
+from paths import BRONZE_LOAD_CHECK
+from config import get_cursor
 
 class RowMismatch(Exception):
     def __init__(self, row_comparison):
