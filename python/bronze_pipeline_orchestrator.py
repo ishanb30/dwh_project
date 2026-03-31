@@ -28,7 +28,7 @@ def run_bronze_pipeline():
         cursor.execute(bronze_check)
         rows = cursor.fetchall()
 
-        failed_steps = [row for row in rows if row[3]=="FAILED"]
+        failed_steps = [row for row in rows if row[3] != "SUCCESS"]
         if failed_steps:
             step, = failed_steps
             raise BronzePipelineFailed(
