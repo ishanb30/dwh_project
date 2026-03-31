@@ -12,7 +12,7 @@ consumed by Python for orchestration and further processing.
 WITH runs AS (
     SELECT
         *,
-        MIN(run_timestamp) OVER(PARTITION BY run_id) AS batch_start_time
+        MIN(run_start_timestamp) OVER(PARTITION BY run_id) AS batch_start_time
     FROM
         admin.etl_run_log
 )
@@ -25,5 +25,5 @@ WHERE batch_start_time = (
     SELECT MAX(batch_start_time) FROM runs
 )
 ORDER BY
-    run_timestamp
+    run_start_timestamp
 ;

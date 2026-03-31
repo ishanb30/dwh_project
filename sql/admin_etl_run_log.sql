@@ -32,17 +32,18 @@ IF OBJECT_ID('admin.etl_run_log', 'U') IS NULL
 BEGIN
     CREATE TABLE admin.etl_run_log (
         id INT IDENTITY(1,1) PRIMARY KEY,
-        run_id UNIQUEIDENTIFIER,
-        proc_name NVARCHAR(255),
-        status NVARCHAR(50),
-        error_message NVARCHAR(MAX) NULL,
-        run_timestamp DATETIME DEFAULT GETDATE(),
-        query_run_time_ms INT NULL,
-        layer NVARCHAR(50),
-        error_class NVARCHAR(50),
+        run_id UNIQUEIDENTIFIER NOT NULL,
+        layer VARCHAR(6) NOT NULL,        
+        proc_name VARCHAR(255) NOT NULL,
+        run_start_timestamp DATETIME NOT NULL DEFAULT GETDATE(),
+        run_end_timestamp DATETIME NULL,
+        proc_run_time_ms INT NULL, 
+        status VARCHAR(7) NOT NULL,
+        validation_status VARCHAR(7),
         rows_read INT NULL,
-        rows_written INT,
-        validation_status NVARCHAR(20)
+        rows_written INT NULL,     
+        error_class VARCHAR(50) NULL,        
+        error_message VARCHAR(MAX) NULL
     );
 END
 

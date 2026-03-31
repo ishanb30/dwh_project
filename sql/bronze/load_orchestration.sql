@@ -33,6 +33,7 @@ BEGIN
     DECLARE @run_id UNIQUEIDENTIFIER;
     DECLARE @schema_name sysname;
     DECLARE @start_time DATETIME;
+    DECLARE @end_time DATETIME;
     DECLARE @ErrorProc NVARCHAR(255);
 
     SET @run_id = NEWID();
@@ -44,11 +45,13 @@ BEGIN TRY
         INSERT INTO admin.etl_run_log (run_id,proc_name,status,layer)
         VALUES (@run_id,'bronze.load_crm_cust_info','STARTED',@schema_name);
         EXEC bronze.load_crm_cust_info;
+    SET @end_time = GETDATE();
 
         UPDATE admin.etl_run_log
         SET
             status = 'SUCCESS',
-            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE())
+            proc_run_time_ms = DATEDIFF(MILLISECOND,@start_time,@end_time),
+            run_end_timestamp = @end_time
         WHERE run_id = @run_id AND proc_name = 'bronze.load_crm_cust_info' AND status = 'STARTED';
 
     SET @start_time = GETDATE();
@@ -56,11 +59,13 @@ BEGIN TRY
         INSERT INTO admin.etl_run_log (run_id,proc_name,status,layer)
         VALUES (@run_id,'bronze.load_crm_prd_info','STARTED',@schema_name);
         EXEC bronze.load_crm_prd_info;
+    SET @end_time = GETDATE();
 
         UPDATE admin.etl_run_log
         SET
             status = 'SUCCESS',
-            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE())
+            proc_run_time_ms = DATEDIFF(MILLISECOND,@start_time,@end_time),
+            run_end_timestamp = @end_time
         WHERE run_id = @run_id AND proc_name = 'bronze.load_crm_prd_info' AND status = 'STARTED';
 
     SET @start_time = GETDATE();
@@ -68,11 +73,13 @@ BEGIN TRY
         INSERT INTO admin.etl_run_log (run_id,proc_name,status,layer)
         VALUES (@run_id,'bronze.load_crm_sales_details','STARTED',@schema_name);
         EXEC bronze.load_crm_sales_details;
+    SET @end_time = GETDATE();
 
         UPDATE admin.etl_run_log
         SET
             status = 'SUCCESS',
-            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE())
+            proc_run_time_ms = DATEDIFF(MILLISECOND,@start_time,@end_time),
+            run_end_timestamp = @end_time
         WHERE run_id = @run_id AND proc_name = 'bronze.load_crm_sales_details' AND status = 'STARTED';
 
     SET @start_time = GETDATE();
@@ -80,11 +87,13 @@ BEGIN TRY
         INSERT INTO admin.etl_run_log (run_id,proc_name,status,layer)
         VALUES (@run_id,'bronze.load_erp_cust_az12','STARTED',@schema_name);
         EXEC bronze.load_erp_cust_az12;
+    SET @end_time = GETDATE();
 
         UPDATE admin.etl_run_log
         SET
             status = 'SUCCESS',
-            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE())
+            proc_run_time_ms = DATEDIFF(MILLISECOND,@start_time,@end_time),
+            run_end_timestamp = @end_time
         WHERE run_id = @run_id AND proc_name = 'bronze.load_erp_cust_az12' AND status = 'STARTED';
 
     SET @start_time = GETDATE();
@@ -92,11 +101,13 @@ BEGIN TRY
         INSERT INTO admin.etl_run_log (run_id,proc_name,status,layer)
         VALUES (@run_id,'bronze.load_erp_loc_a101','STARTED',@schema_name);
         EXEC bronze.load_erp_loc_a101;
+    SET @end_time = GETDATE();
 
         UPDATE admin.etl_run_log
         SET
             status = 'SUCCESS',
-            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE())
+            proc_run_time_ms = DATEDIFF(MILLISECOND,@start_time,@end_time),
+            run_end_timestamp = @end_time
         WHERE run_id = @run_id AND proc_name = 'bronze.load_erp_loc_a101' AND status = 'STARTED';
 
     SET @start_time = GETDATE();
@@ -104,11 +115,13 @@ BEGIN TRY
         INSERT INTO admin.etl_run_log (run_id,proc_name,status,layer)
         VALUES (@run_id,'bronze.load_erp_px_cat_g1v2','STARTED',@schema_name);
         EXEC bronze.load_erp_px_cat_g1v2;
+    SET @end_time = GETDATE();
 
         UPDATE admin.etl_run_log
         SET
             status = 'SUCCESS',
-            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE())
+            proc_run_time_ms = DATEDIFF(MILLISECOND,@start_time,@end_time),
+            run_end_timestamp = @end_time
         WHERE run_id = @run_id AND proc_name = 'bronze.load_erp_px_cat_g1v2' AND status = 'STARTED';
     END TRY
     BEGIN CATCH
@@ -124,8 +137,8 @@ BEGIN TRY
         SET
             proc_name = @ErrorProc,
             status = 'FAILED',
-            error_message = CONCAT('Step failed: ',@ErrorProc,' | ',@ErrorMsg),
-            query_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE()),
+            proc_run_time_ms = DATEDIFF(MILLISECOND,@start_time,GETDATE()),
+            run_end_timestamp = GETDATE(),
             error_class = (
                 CASE
                     WHEN @ErrorSev >= 17 THEN 'INFRASTRUCTURE'
@@ -134,8 +147,9 @@ BEGIN TRY
                     WHEN @ErrorNum IN (208,207,102,201,2812,8144) THEN 'CODE'
                     ELSE 'OTHER'
                 END
-            )
-        WHERE run_id = @run_id AND status = 'STARTED';
+            ),
+            error_message = CONCAT('Step failed: ',@ErrorProc,' | ',@ErrorMsg)
+        WHERE run_id = @run_id AND layer = 'bronze' AND status = 'STARTED';
         THROW;
     END CATCH
 END;
