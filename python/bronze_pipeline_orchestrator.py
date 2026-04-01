@@ -9,10 +9,8 @@ from config import get_cursor
 from paths import BRONZE_LOAD_CHECK
 
 class BronzePipelineFailed(Exception):
-    def __init__(self, proc_name, error_class, error_message):
-        self.proc_name = proc_name
-        self.error_class = error_class
-        self.error_message = error_message
+    def __init__(self, failed_steps):
+        self.failed_steps = failed_steps
 
 def run_bronze_pipeline():
     conn = None
@@ -27,15 +25,11 @@ def run_bronze_pipeline():
             bronze_check = f.read()
         cursor.execute(bronze_check)
         rows = cursor.fetchall()
+        dict_rows = [dict(zip([col[0] for col in cursor.description], row)) for row in rows]
 
-        failed_steps = [row for row in rows if row[3] != "SUCCESS"]
+        failed_steps = [dict_row for dict_row in dict_rows if dict_row['status'] != "SUCCESS"]
         if failed_steps:
-            step, = failed_steps
-            raise BronzePipelineFailed(
-                proc_name = step[3],
-                error_class = step[9],
-                error_message = step[5]
-            )
+            raise BronzePipelineFailed(failed_steps)
 
     except BronzePipelineFailed as e:
         raise
