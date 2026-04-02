@@ -25,9 +25,9 @@ def run_bronze_pipeline():
             bronze_check = f.read()
         cursor.execute(bronze_check)
         rows = cursor.fetchall()
-        dict_rows = [dict(zip([col[0] for col in cursor.description], row)) for row in rows]
+        dicts = [dict(zip([col[0] for col in cursor.description], row)) for row in rows]
 
-        failed_steps = [dict_row for dict_row in dict_rows if dict_row['status'] != "SUCCESS"]
+        failed_steps = [d for d in dicts if d['status'] != "SUCCESS"]
         if failed_steps:
             raise BronzePipelineFailed(failed_steps)
 
