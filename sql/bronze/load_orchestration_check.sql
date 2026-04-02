@@ -21,9 +21,11 @@ SELECT
     *
 FROM
     runs
-WHERE batch_start_time = (
+WHERE 
+    layer = 'bronze' AND
+    batch_start_time = (
     SELECT MAX(batch_start_time) FROM runs
-)
+    )
 ORDER BY
     run_start_timestamp
 ;
