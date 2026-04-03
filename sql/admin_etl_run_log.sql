@@ -41,10 +41,12 @@ BEGIN
         status VARCHAR(7) NOT NULL,
         validation_status VARCHAR(7),
         rows_read INT NULL,
-        rows_written INT NULL,     
+        rows_written INT NULL,
+        referential_integrity VARCHAR(4) NULL,
+        null_key_check VARCHAR(4) NULL,
+        duplicate_key_check VARCHAR(4) NULL,     
         error_class VARCHAR(50) NULL,        
         error_message VARCHAR(MAX) NULL
     );
 END
-
 
