@@ -9,7 +9,7 @@ and validation status.
 import pandas as pd
 from paths import SOURCE_CSV_DIR
 from paths import BRONZE_LOAD_CHECK
-from config import get_cursor
+from db_utils import get_cursor
 
 class RowMismatch(Exception):
     def __init__(self, row_comparison):
@@ -61,55 +61,62 @@ def update_without_row_count(status, run_id, key, cursor):
         WHERE run_id = '{run_id}' AND layer = 'bronze' AND proc_name = 'bronze.load_{key}'
     """)
 
-conn = None
-cursor = None
-try:
-    conn, cursor = get_cursor()
+def run_bronze_validation():
+    conn = None
+    cursor = None
 
-    cursor.execute("""
-        SELECT TABLE_NAME
-        FROM INFORMATION_SCHEMA.TABLES
-        WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA='bronze';
-    """)
-    rows = cursor.fetchall()
-    table_names = [row[0] for row in rows]
+    try:
+        conn, cursor = get_cursor()
 
-    files = list(SOURCE_CSV_DIR.rglob("*.csv"))
-    source_counts = get_source_row_counts(files)
-    bronze_counts = get_bronze_row_counts(table_names, cursor)
-    run_id = get_run_id(BRONZE_LOAD_CHECK, cursor)
+        cursor.execute("""
+            SELECT TABLE_NAME
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA='bronze';
+        """)
+        rows = cursor.fetchall()
+        table_names = [row[0] for row in rows]
 
-    source_keys = set(source_counts.keys())
-    bronze_keys = set(bronze_counts.keys())
-    if source_keys == bronze_keys:
-        row_comparison = {}
-        for key in source_keys:
-            if source_counts[key] != bronze_counts[key]:
-                row_comparison[key] = (source_counts[key], bronze_counts[key])
-        if len(row_comparison) == 0:
+        files = list(SOURCE_CSV_DIR.rglob("*.csv"))
+        source_counts = get_source_row_counts(files)
+        bronze_counts = get_bronze_row_counts(table_names, cursor)
+        run_id = get_run_id(BRONZE_LOAD_CHECK, cursor)
+
+        source_keys = set(source_counts.keys())
+        bronze_keys = set(bronze_counts.keys())
+        if source_keys == bronze_keys:
+            row_comparison = {}
             for key in source_keys:
-                update_with_row_count(source_counts, bronze_counts, 'SUCCESS', run_id, key, cursor)
-            conn.commit()
+                if source_counts[key] != bronze_counts[key]:
+                    row_comparison[key] = (source_counts[key], bronze_counts[key])
+            if len(row_comparison) == 0:
+                for key in source_keys:
+                    update_with_row_count(source_counts, bronze_counts, 'SUCCESS', run_id, key, cursor)
+                conn.commit()
+            else:
+                raise RowMismatch(row_comparison)
         else:
-            raise RowMismatch(row_comparison)
-    else:
-        key_comparison = source_keys.symmetric_difference(bronze_keys)
-        raise KeyMismatch(key_comparison)
-except RowMismatch as e:
-    for key in e.row_comparison:
-        update_with_row_count(source_counts, bronze_counts, 'FAILED', run_id, key, cursor)
-    conn.commit()
-    raise
-except KeyMismatch as e:
-    for key in source_keys:
-        update_without_row_count('FAILED', run_id, key, cursor)
-    conn.commit()
-    raise
-finally:
-    if cursor:
-        cursor.close()
-    if conn:
-        conn.close()
+            key_comparison = source_keys.symmetric_difference(bronze_keys)
+            raise KeyMismatch(key_comparison)
+    except RowMismatch as e:
+        for key in e.row_comparison:
+            update_with_row_count(source_counts, bronze_counts, 'FAILED', run_id, key, cursor)
+        conn.commit()
+        raise
+    except KeyMismatch as e:
+        for key in source_keys:
+            update_without_row_count('FAILED', run_id, key, cursor)
+        conn.commit()
+        raise
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+#To be run in a master orchestrator file
+if __name__ == "__main__":
+    run_bronze_validation()
 
 
 

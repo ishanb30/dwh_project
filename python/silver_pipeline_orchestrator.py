@@ -5,7 +5,7 @@ Runs the Silver layer pipeline. Detects
 and raises errors for upstream handling
 """
 
-from config import get_cursor
+from db_utils import get_cursor
 from paths import BRONZE_LOAD_CHECK
 from paths import SILVER_LOAD_CHECK
 
