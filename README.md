@@ -75,11 +75,14 @@ sql/
 └── gold/                          # Planned
 
 python/
-├── config.py                      # Paths and connection config
-├── cursor.py                      # Database connection helper
-├── bronze_pipeline_orchestrator.py
-├── data_validation.py
-└── data_profiling.py
+├── db_utils.py                         # Database connection helpers (get_connection, get_cursor)
+├── config.yaml                         # Silver-layer metadata (primary keys, referential integrity refs)
+├── paths.py                            # Centralised file path constants
+├── bronze_pipeline_orchestrator.py     # Bronze layer orchestration
+├── silver_pipeline_orchestrator.py     # Silver layer orchestration
+├── bronze_data_validation.py           # Bronze row-count validation
+├── silver_data_validation.py           # Silver validation (nulls, duplicates, referential integrity)
+└── data_profiling.py                   # Exploratory data profiling
 ```
 
 ---
@@ -126,25 +129,28 @@ The bronze layer ingests raw CSV files directly into SQL Server with no transfor
 
 ---
 
-## Silver Layer (In Progress)
+## Silver Layer (Complete)
 
 The silver layer cleans and standardises raw bronze data. Transformations are applied in staged CTEs, each with a single clearly-named responsibility. Silver does not impute missing values or apply business-rule-based enrichment — those decisions are deferred to Gold.
 
-**CRM tables complete:**
+**All six tables complete:**
 
-| Table                      | Key transformations                                                                 |
-|----------------------------|-------------------------------------------------------------------------------------|
-| `crm_cust_info`            | Type casting, whitespace trimming, duplicate resolution (fewest nulls → latest date) |
-| `crm_prd_info`             | Key splitting, product line expansion, end date reconstruction from next start date  |
-| `crm_sales_details`        | Date format conversion, financial field derivation and reconciliation, bad data flagging |
+| Table                        | Key transformations                                                                         |
+|------------------------------|---------------------------------------------------------------------------------------------|
+| `crm_cust_info`              | Type casting, whitespace trimming, duplicate resolution (fewest nulls → latest date)        |
+| `crm_prd_info`               | Key splitting, product line expansion, end date reconstruction from next start date         |
+| `crm_sales_details`          | Date format conversion, financial field derivation and reconciliation, bad data flagging    |
+| `erp_cust_az12`              | Customer ID normalisation to cst_key format, date casting, gender standardisation           |
+| `erp_loc_a101`               | Country code standardisation, whitespace trimming                                           |
+| `erp_px_cat_g1v2`            | Whitespace trimming, maintenance flag standardisation                                       |
 
-**ERP tables in progress:**
+**Python layer:**
+- `silver_pipeline_orchestrator.py` — executes the SQL master proc and raises a custom exception on failure
+- `silver_data_validation.py` — runs three checks against all six silver tables: null checks on primary key columns, duplicate checks (including composite keys), and referential integrity checks across table relationships; results are written to `admin.etl_run_log` per table; failures bubble up as `SilverValidationFailed`
 
-| Table                      | Key transformations                                                                 |
-|----------------------------|-------------------------------------------------------------------------------------|
-| `erp_cust_az12`            | Customer ID normalisation to cst_key format, date casting, gender standardisation   |
-
-Remaining ERP tables and the Python pipeline/validation layer are planned.
+**Silver metadata (`config.yaml`):**
+- Primary key columns per table (used for null and duplicate checks)
+- Referential integrity relationships between tables (used for join-based orphan checks)
 
 ---
 
@@ -186,6 +192,9 @@ The gold layer will expose a dimensional model optimised for analytical queries:
 
 **CRM and ERP integration**
 - The join strategy between CRM and ERP tables is being determined through data profiling. Each table is being analysed individually before cross-system relationships are defined.
+
+**Silver validation — dynamic queries over f-string SQL**
+- In production, validation would typically use one script per table (as in dbt), allowing fully static, parameterised SQL. Because this project consolidates all six tables into a single validation script, table and column names must be interpolated dynamically using f-strings and Python loops. This carries a theoretical SQL injection risk. In this project, all dynamic values come from a controlled `config.yaml` file with no user input, so the risk is accepted. In a production system with external input, parameterised queries or an ORM would be required.
 
 ---
 
