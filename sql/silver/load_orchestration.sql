@@ -55,7 +55,9 @@ BEGIN TRY
         SET
             status = 'SUCCESS',
             proc_run_time_ms = DATEDIFF(MILLISECOND,@start_time,@end_time),
-            run_end_timestamp = @end_time
+            run_end_timestamp = @end_time,
+            rows_read = (SELECT COUNT(*) FROM bronze.erp_cust_az12),
+            rows_written = (SELECT COUNT(*) FROM silver.erp_cust_az12)
         WHERE run_id = @run_id AND proc_name = 'silver.load_erp_cust_az12' AND status = 'STARTED';
     
     SET @start_time = GETDATE();
@@ -69,7 +71,9 @@ BEGIN TRY
         SET
             status = 'SUCCESS',
             proc_run_time_ms = DATEDIFF(MILLISECOND,@start_time,@end_time),
-            run_end_timestamp = @end_time
+            run_end_timestamp = @end_time,
+            rows_read = (SELECT COUNT(*) FROM bronze.erp_loc_a101),
+            rows_written = (SELECT COUNT(*) FROM silver.erp_loc_a101)
         WHERE run_id = @run_id AND proc_name = 'silver.load_erp_loc_a101' AND status = 'STARTED';
     
     SET @start_time = GETDATE();
@@ -83,7 +87,9 @@ BEGIN TRY
         SET
             status = 'SUCCESS',
             proc_run_time_ms = DATEDIFF(MILLISECOND,@start_time,@end_time),
-            run_end_timestamp = @end_time
+            run_end_timestamp = @end_time,
+            rows_read = (SELECT COUNT(*) FROM bronze.erp_px_cat_g1v2),
+            rows_written = (SELECT COUNT(*) FROM silver.erp_px_cat_g1v2)
         WHERE run_id = @run_id AND proc_name = 'silver.load_erp_px_cat_g1v2' AND status = 'STARTED';
     
     SET @start_time = GETDATE();
@@ -97,7 +103,9 @@ BEGIN TRY
         SET
             status = 'SUCCESS',
             proc_run_time_ms = DATEDIFF(MILLISECOND,@start_time,@end_time),
-            run_end_timestamp = @end_time
+            run_end_timestamp = @end_time,
+            rows_read = (SELECT COUNT(*) FROM bronze.crm_cust_info),
+            rows_written = (SELECT COUNT(*) FROM silver.crm_cust_info)
         WHERE run_id = @run_id AND proc_name = 'silver.load_crm_cust_info' AND status = 'STARTED';
             
     SET @start_time = GETDATE();
@@ -111,7 +119,9 @@ BEGIN TRY
         SET
             status = 'SUCCESS',
             proc_run_time_ms = DATEDIFF(MILLISECOND,@start_time,@end_time),
-            run_end_timestamp = @end_time
+            run_end_timestamp = @end_time,
+            rows_read = (SELECT COUNT(*) FROM bronze.crm_prd_info),
+            rows_written = (SELECT COUNT(*) FROM silver.crm_prd_info)
         WHERE run_id = @run_id AND proc_name = 'silver.load_crm_prd_info' AND status = 'STARTED';
 
     SET @start_time = GETDATE();
@@ -125,7 +135,9 @@ BEGIN TRY
         SET
             status = 'SUCCESS',
             proc_run_time_ms = DATEDIFF(MILLISECOND,@start_time,@end_time),
-            run_end_timestamp = @end_time
+            run_end_timestamp = @end_time,
+            rows_read = (SELECT COUNT(*) FROM bronze.crm_sales_details),
+            rows_written = (SELECT COUNT(*) FROM silver.crm_sales_details)
         WHERE run_id = @run_id AND proc_name = 'silver.load_crm_sales_details' AND status = 'STARTED';
 END TRY
 BEGIN CATCH
