@@ -6,7 +6,6 @@ Outputs: updates the admin.etl_run_log table with rows read, rows written
 and validation status.
 """
 
-import pandas as pd
 from paths import SOURCE_CSV_DIR
 from paths import BRONZE_LOAD_CHECK
 from db_utils import get_cursor
