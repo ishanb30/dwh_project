@@ -16,3 +16,5 @@ SQL_SILVER_DIR = BASE_DIR / "sql" / "silver"
 SILVER_LOAD_CHECK = SQL_SILVER_DIR / "load_orchestration_check.sql"
 
 SOURCE_CSV_DIR = BASE_DIR / "source"
+
+CONFIG_PATH = BASE_DIR / "python" / "config.yaml"
