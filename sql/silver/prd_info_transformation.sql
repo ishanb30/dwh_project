@@ -114,7 +114,12 @@ BEGIN
         SELECT
             TRY_CAST(prd_id AS INT) AS prd_id,
             CAST(original_prd_key AS VARCHAR(18)) AS original_prd_key,
-            CAST(cat_id AS VARCHAR(5)) AS cat_id,
+            CAST(
+                CASE
+                    WHEN cat_id = 'CO_PE' THEN 'CO_PD'
+                    ELSE cat_id
+                END 
+            AS VARCHAR(5)) AS cat_id,
             CAST(prd_key AS VARCHAR(14)) AS prd_key,
             CAST(prd_nm AS VARCHAR(50)) AS prd_nm,
             prd_cost,
