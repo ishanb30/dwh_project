@@ -59,7 +59,7 @@ BEGIN
                 WHEN UPPER(cntry) IN ('GERMANY','DE') THEN 'Germany'
                 WHEN UPPER(cntry) IN ('UNITED KINGDOM','GB','UK') THEN 'United Kingdom'
                 WHEN UPPER(cntry) IN ('UNITED STATES','USA','US') THEN 'United States'
-                WHEN UPPER(cntry) IS NOT NULL THEN 'n/a'
+                WHEN UPPER(cntry) IS NOT NULL THEN 'Other'
                 ELSE NULL
             END AS cntry
         FROM

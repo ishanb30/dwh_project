@@ -102,7 +102,7 @@ BEGIN
                 WHEN UPPER(prd_line) = 'S' THEN 'Miscellaneous'
                 WHEN UPPER(prd_line) IS NOT NULL AND
                     UPPER(prd_line) NOT IN ('M','R','T','S')
-                    THEN 'n/a'
+                    THEN 'Other'
                 ELSE NULL
             END AS prd_line,
             prd_start_dt,
