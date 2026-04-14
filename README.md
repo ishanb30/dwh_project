@@ -193,6 +193,9 @@ The gold layer will expose a dimensional model optimised for analytical queries:
 **CRM and ERP integration**
 - The join strategy between CRM and ERP tables is being determined through data profiling. Each table is being analysed individually before cross-system relationships are defined.
 
+**Gold — star schema over snowflake**
+- Gold uses a star schema: fully denormalised dimension tables surrounding a central fact table, with no joins between dimension tables. A snowflake schema (where dimensions reference other dimensions) was considered but rejected. The dimension tables in this model are not complex — none have hierarchies deep enough to warrant managing as separate normalised entities. The dataset is also small, so the storage redundancy from denormalisation is negligible. The star schema's benefit — a single join from fact to any dimension — outweighs the marginal gains of normalising further.
+
 **Silver validation — dynamic queries over f-string SQL**
 - In production, validation would typically use one script per table (as in dbt), allowing fully static, parameterised SQL. Because this project consolidates all six tables into a single validation script, table and column names must be interpolated dynamically using f-strings and Python loops. This carries a theoretical SQL injection risk. In this project, all dynamic values come from a controlled `config.yaml` file with no user input, so the risk is accepted. In a production system with external input, parameterised queries or an ORM would be required.
 
