@@ -114,18 +114,24 @@ The bronze layer ingests raw CSV files directly into SQL Server with no transfor
 
 **Observability (`admin.etl_run_log`):**
 
-| Column               | Purpose                                    |
-|----------------------|--------------------------------------------|
-| `run_id`             | UUID grouping all steps in a single run    |
-| `proc_name`          | Stored procedure that executed             |
-| `run_status`         | `STARTED` → `SUCCESS` or `FAILED`         |
-| `layer`              | Pipeline layer (`bronze`, `silver`, etc.)  |
-| `error_class`        | Categorised failure type                   |
-| `error_message`      | SQL error detail on failure                |
-| `rows_read`          | Row count from source CSV (set by Python)  |
-| `rows_written`       | Row count loaded to table (set by Python)  |
-| `validation_status`  | `SUCCESS` or `FAILED` (set by Python)      |
-| `query_run_time_ms`  | Execution duration in milliseconds         |
+| Column                   | Purpose                                          |
+|--------------------------|--------------------------------------------------|
+| `id`                     | Auto-incrementing row identifier                 |
+| `run_id`                 | UUID grouping all steps in a single run          |
+| `layer`                  | Pipeline layer (`bronze`, `silver`, etc.)        |
+| `proc_name`              | Stored procedure that executed                   |
+| `run_start_timestamp`    | When the proc started                            |
+| `run_end_timestamp`      | When the proc finished                           |
+| `proc_run_time_ms`       | Execution duration in milliseconds               |
+| `status`                 | `STARTED` → `SUCCESS` or `FAILED`               |
+| `validation_status`      | `PASS` or `FAIL` (set by Python validation)      |
+| `rows_read`              | Row count from source (set by Python)            |
+| `rows_written`           | Row count loaded to table (set by Python)        |
+| `referential_integrity`  | `PASS` or `FAIL` for referential integrity check |
+| `null_key_check`         | `PASS` or `FAIL` for null key check              |
+| `duplicate_key_check`    | `PASS` or `FAIL` for duplicate key check         |
+| `error_class`            | Categorised failure type                         |
+| `error_message`          | SQL error detail on failure                      |
 
 **Python layer:**
 - `bronze_pipeline_orchestrator.py` — executes the SQL master proc, reads post-run log output, and raises a custom `BronzePipelineFailed` exception on failure
