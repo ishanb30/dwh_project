@@ -72,7 +72,11 @@ sql/
 │   ├── prd_info_transformation.sql      # CRM product info transformation
 │   ├── sales_details_transformation.sql # CRM sales details transformation
 │   └── cust_az12_transformation.sql     # ERP customer transformation
-└── gold/                          # Planned
+└── gold/
+    ├── create_tables.sql                # Gold table DDL (dim_customer, dim_product, fact_sales)
+    ├── dim_customer.sql                 # dim_customer transformation and load proc
+    ├── dim_product.sql                  # dim_product transformation and load proc
+    └── fact_sales.sql                   # fact_sales transformation and load proc
 
 python/
 ├── db_utils.py                         # Database connection helpers (get_connection, get_cursor)
@@ -154,23 +158,35 @@ The silver layer cleans and standardises raw bronze data. Transformations are ap
 
 ---
 
-## Gold Layer (Planned)
+## Gold Layer (In Progress)
 
-The gold layer will expose a dimensional model optimised for analytical queries:
+The gold layer exposes a star schema dimensional model optimised for analytical queries. It interprets and enriches Silver data — applying business rules, imputing values, and resolving data quality issues deferred from Silver.
 
-- Dimension tables: customers, products, locations
-- Fact table: sales transactions
-- Business-ready views for reporting
+**Three tables:**
 
-**Known items deferred from Silver:**
+| Table | Grain | Source tables |
+|---|---|---|
+| `gold.dim_customer` | One row per customer | `crm_cust_info`, `erp_cust_az12`, `erp_loc_a101` |
+| `gold.dim_product` | One row per product version (SCD Type 2) | `crm_prd_info`, `erp_px_cat_g1v2` |
+| `gold.fact_sales` | One row per order line | `crm_sales_details` + `gold.dim_product` |
 
-| Item | Source table | Detail |
-|------|-------------|--------|
-| NULL order date imputation | `crm_sales_details` | Where `sls_order_dt` is NULL, attempt to borrow the date from another row with the same order number; if no sibling exists, leave as NULL |
-| Negative sales classification | `crm_sales_details` | Determine whether negative `sls_sales` values represent legitimate returns or data errors; requires a defined return window business rule |
-| Incomplete financial data | `crm_sales_details` | Rows flagged `sls_incomplete_financial_data = 'Y'` (both `sls_sales` and `sls_price` are NULL) need a resolution strategy |
-| Date chronological validation | `crm_sales_details` | Enforce `sls_order_dt <= sls_ship_dt <= sls_due_dt`; rows violating this require a business rule to determine which date is incorrect |
-| Unrecognised coded field values | All Silver tables | In CASE WHEN transformations that map source codes to readable labels (e.g. gender, product line), values outside the known set are set to NULL in Silver. Gold will apply a business rule to label these as `'Other'` or a domain-appropriate catch-all once business context is available |
+**Data quality flags in `fact_sales`:**
+
+| Flag | Meaning |
+|---|---|
+| `is_incomplete_financial_data` | Both `sales` and `price` are NULL — missing value cannot be derived |
+| `err_date_lifecycle` | `order_date` falls outside all product version date ranges — `product_id` is NULL |
+| `err_date_sequence` | `order_date <= ship_date <= delivery_date` is violated |
+
+**Deferred items from Silver — resolved in Gold:**
+
+| Item | Resolution |
+|------|------------|
+| NULL order date | Borrowed from a sibling row with the same order number via window function; ship/due dates not borrowed as these can legitimately differ across order lines |
+| Negative sales | Converted to absolute value — return detection not possible without a reliable source-system return identifier |
+| Incomplete financial data | Preserved with `is_incomplete_financial_data = 'Y'` flag; rows kept for auditability |
+| Date chronological validation | Violations flagged with `err_date_sequence = 'Y'`; dates and financial data preserved |
+| Unresolvable product version | Flagged with `err_date_lifecycle = 'Y'`; `product_id` left as NULL with `product_key` retained for manual lookup |
 
 ---
 
@@ -194,7 +210,13 @@ The gold layer will expose a dimensional model optimised for analytical queries:
 - The join strategy between CRM and ERP tables is being determined through data profiling. Each table is being analysed individually before cross-system relationships are defined.
 
 **Gold — star schema over snowflake**
-- Gold uses a star schema: fully denormalised dimension tables surrounding a central fact table, with no joins between dimension tables. A snowflake schema (where dimensions reference other dimensions) was considered but rejected. The dimension tables in this model are not complex — none have hierarchies deep enough to warrant managing as separate normalised entities. The dataset is also small, so the storage redundancy from denormalisation is negligible. The star schema's benefit — a single join from fact to any dimension — outweighs the marginal gains of normalising further.
+- Gold uses a star schema: `fact_sales` is surrounded by `dim_customer` and `dim_product`, with no joins between dimension tables. A snowflake schema was considered but rejected. Neither `dim_customer` (which consolidates three Silver tables) nor `dim_product` (which consolidates two) has a hierarchy complex enough to warrant managing as separate normalised entities. The dataset is also small, so the storage redundancy from denormalisation is negligible. The star schema's benefit — a single join from fact to any dimension — outweighs the marginal gains of normalising further.
+
+**Gold — data quality flags over row filtering**
+- Rows with data quality issues in `fact_sales` (unresolvable product versions, date sequence violations, incomplete financial data) are preserved with flag columns rather than filtered out. Filtering would silently remove sales transactions from all downstream analysis, understating revenue and hiding the extent of the data quality problem. Flags allow analysts to make an informed choice about inclusion, and make the quality issue visible and measurable.
+
+**Silver — known data quality fix**
+- A referential integrity mismatch was identified between `crm_prd_info.cat_id` and `erp_px_cat_g1v2.id`: the category code for bike pedal products was recorded as `CO_PE` in the CRM source but `CO_PD` in the ERP category catalogue. Since `erp_px_cat_g1v2` is the authoritative source for category definitions, the correction was applied in the `crm_prd_info` Silver casting CTE — `CO_PE` is remapped to `CO_PD` with an explanatory comment. This fix is embedded in the transformation proc so it survives pipeline re-runs.
 
 **Silver validation — dynamic queries over f-string SQL**
 - In production, validation would typically use one script per table (as in dbt), allowing fully static, parameterised SQL. Because this project consolidates all six tables into a single validation script, table and column names must be interpolated dynamically using f-strings and Python loops. This carries a theoretical SQL injection risk. In this project, all dynamic values come from a controlled `config.yaml` file with no user input, so the risk is accepted. In a production system with external input, parameterised queries or an ORM would be required.
