@@ -12,10 +12,10 @@ import os
 import pyodbc
 
 def get_connection():
-    server = os.environ.get('DB_SERVER')
-    database = os.environ.get('DB_DATABASE')
-    username = os.environ.get('DB_USER')
-    password = os.environ.get('DB_PASSWORD')
+    server = os.environ['DB_SERVER']
+    database = os.environ['DB_DATABASE']
+    username = os.environ['DB_USER']
+    password = os.environ['DB_PASSWORD']
 
     return pyodbc.connect(
         f'DRIVER={{ODBC Driver 18 for SQL Server}};'
