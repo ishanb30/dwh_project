@@ -30,7 +30,7 @@ GO
 CREATE OR ALTER PROC gold.load_dim_product
 AS
 BEGIN
-    TRUNCATE TABLE gold.dim_product;
+    DELETE FROM gold.dim_product;
 
     INSERT INTO gold.dim_product
     SELECT

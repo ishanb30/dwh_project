@@ -7,12 +7,12 @@ Purpose:
 Creates a child stored procedure, that will be called from a master procedure
 to load the transformed data into the gold fact_sales table.
 
-Joins dim table (dim_customer) to the silver table (crm_sales_details)
+Joins dim table (dim_product) to the silver table (crm_sales_details)
 to introduce product_id into the fact_sales table. This is because product_id
 uniquely identifies the grain in the dim_product table, so will be used as the
 foreign key that references product_id from the dim_product table. In dim_product
 product_key can have duplicates if there are different iterations of the same
-product, so it is unreliale as a foreign key.
+product, so it is unreliable as a foreign key.
 Transformations are performed in stages using CTEs and include:
 
 - Joining the dim_producty to the fact table
@@ -48,7 +48,7 @@ GO
 CREATE OR ALTER PROC gold.load_fact_sales
 AS
 BEGIN
-    TRUNCATE TABLE gold.fact_sales;
+    DELETE FROM gold.fact_sales;
 
     WITH fact_sales_joined AS(
         SELECT

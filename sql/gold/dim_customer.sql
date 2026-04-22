@@ -41,7 +41,7 @@ GO
 CREATE OR ALTER PROC gold.load_dim_customer
 AS
 BEGIN
-    TRUNCATE TABLE gold.dim_customer;
+    DELETE FROM gold.dim_customer;
 
     WITH dim_customer_joined AS(
         SELECT
