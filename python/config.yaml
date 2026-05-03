@@ -1,0 +1,73 @@
+
+
+silver:
+  crm_cust_info:
+    primary_keys:
+      - cst_id
+  crm_prd_info:
+    primary_keys:
+      - prd_id
+  crm_sales_details:
+    primary_keys:
+      - sls_ord_num
+      - sls_prd_key
+  erp_cust_az12:
+    primary_keys:
+      - cid
+  erp_loc_a101:
+    primary_keys:
+      - cid
+  erp_px_cat_g1v2:
+    primary_keys:
+      - id
+
+refs:
+  - src_table: crm_cust_info
+    src_col: cst_key
+    tgt_table: erp_cust_az12
+    tgt_col: cid
+  - src_table: crm_cust_info
+    src_col: cst_key
+    tgt_table: erp_loc_a101
+    tgt_col: cid
+  - src_table: crm_sales_details
+    src_col: sls_cust_id
+    tgt_table: crm_cust_info
+    tgt_col: cst_id
+  - src_table: crm_sales_details
+    src_col: sls_prd_key
+    tgt_table: crm_prd_info
+    tgt_col: prd_key
+  - src_table: crm_prd_info
+    src_col: cat_id
+    tgt_table: erp_px_cat_g1v2
+    tgt_col: id
+
+gold:
+  dim_customer:
+    primary_keys:
+      - customer_id
+  dim_product:
+    primary_keys:
+      - product_id
+  fact_sales:
+    primary_keys:
+      - order_number
+      - product_key
+
+g_refs:
+  - src_table: fact_sales
+    src_col: customer_id
+    tgt_table: dim_customer
+    tgt_col: customer_id
+  - src_table: fact_sales
+    src_col: product_id
+    tgt_table: dim_product
+    tgt_col: product_id
+    allow_null_src: true
+  - src_table: fact_sales
+    src_col: product_key
+    tgt_table: dim_product
+    tgt_col: product_key
+
+
