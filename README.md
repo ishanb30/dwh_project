@@ -76,16 +76,21 @@ sql/
     ├── create_tables.sql                # Gold table DDL (dim_customer, dim_product, fact_sales)
     ├── dim_customer.sql                 # dim_customer transformation and load proc
     ├── dim_product.sql                  # dim_product transformation and load proc
-    └── fact_sales.sql                   # fact_sales transformation and load proc
+    ├── fact_sales.sql                   # fact_sales transformation and load proc
+    └── load_orchestration.sql           # Master proc: deletes fact_sales, loads dims, loads fact
 
 python/
 ├── db_utils.py                         # Database connection helpers (get_connection, get_cursor)
-├── config.yaml                         # Silver-layer metadata (primary keys, referential integrity refs)
+├── config.yaml                         # Layer metadata (primary keys, referential integrity refs) for Silver and Gold
 ├── paths.py                            # Centralised file path constants
+├── logging_config.py                   # Root logger setup for pipeline-level error logging
 ├── bronze_pipeline_orchestrator.py     # Bronze layer orchestration
 ├── silver_pipeline_orchestrator.py     # Silver layer orchestration
+├── gold_pipeline_orchestrator.py       # Gold layer orchestration
 ├── bronze_data_validation.py           # Bronze row-count validation
 ├── silver_data_validation.py           # Silver validation (nulls, duplicates, referential integrity)
+├── gold_data_validation.py             # Gold validation (nulls, duplicates, referential integrity, flag percentages)
+├── master_orchestrator.py              # End-to-end pipeline runner — executes all three layers in sequence
 └── data_profiling.py                   # Exploratory data profiling
 ```
 
@@ -164,9 +169,18 @@ The silver layer cleans and standardises raw bronze data. Transformations are ap
 
 ---
 
-## Gold Layer (In Progress)
+## Gold Layer (Complete)
 
 The gold layer exposes a star schema dimensional model optimised for analytical queries. It interprets and enriches Silver data — applying business rules, imputing values, and resolving data quality issues deferred from Silver.
+
+**SQL layer (complete):**
+- Three child stored procs (`dim_customer`, `dim_product`, `fact_sales`) handle transformation and load
+- `load_orchestration.sql` — master proc that deletes `fact_sales`, truncates and reloads both dims, then loads `fact_sales`; orchestrates all three child procs with structured `TRY/CATCH` and run logging
+
+**Python layer (complete):**
+- `gold_pipeline_orchestrator.py` — fetches the Silver `run_id`, executes the Gold master proc, and raises `GoldPipelineFailed` if any step fails
+- `gold_data_validation.py` — runs three standard checks (null, duplicate, referential integrity) against all Gold tables, logs flag percentages for `fact_sales` data quality flags, updates `validation_status` in `admin.etl_run_log`, and raises `GoldValidationFailed` on any check failure
+- `master_orchestrator.py` — end-to-end pipeline runner; executes all three layers in sequence (source → bronze → silver → gold, each with pipeline then validation); stops on any failure, logs to `pipeline.log` via root logger, prints detail to console, and exits with `sys.exit(1)`
 
 **Three tables:**
 
@@ -223,6 +237,18 @@ The gold layer exposes a star schema dimensional model optimised for analytical 
 
 **Silver — known data quality fix**
 - A referential integrity mismatch was identified between `crm_prd_info.cat_id` and `erp_px_cat_g1v2.id`: the category code for bike pedal products was recorded as `CO_PE` in the CRM source but `CO_PD` in the ERP category catalogue. Since `erp_px_cat_g1v2` is the authoritative source for category definitions, the correction was applied in the `crm_prd_info` Silver casting CTE — `CO_PE` is remapped to `CO_PD` with an explanatory comment. This fix is embedded in the transformation proc so it survives pipeline re-runs.
+
+**Gold — DELETE before TRUNCATE for dimensions**
+- The Gold master proc issues `DELETE FROM gold.fact_sales` before calling the dim child procs. SQL Server blocks `TRUNCATE` on any table that has a foreign key constraint pointing to it, regardless of whether the referencing table is empty — this is a metadata-level restriction, not a data-level one. `DELETE` has no such restriction. The dim child procs therefore use `DELETE` rather than `TRUNCATE` to clear their tables before reloading.
+
+**Gold — `rows_read` convention**
+- Each Gold child proc reads from multiple Silver tables via joins. `rows_read` in `admin.etl_run_log` is set to the row count of the driving (left-most) Silver table for each proc: `crm_cust_info` for `dim_customer`, `crm_prd_info` for `dim_product`, and `crm_sales_details` for `fact_sales`. Since all joins are LEFT JOINs, the driving table's row count equals the output row count before filtering — making it a meaningful and consistent metric.
+
+**Gold validation — logging over run log columns**
+- Silver validation writes per-check results (`PASS`/`FAIL`) to dedicated columns in `admin.etl_run_log`. Gold validation instead logs check detail to a dedicated `gold_validation.log` file using Python's `logging` module, and only writes a summary `validation_status` (`SUCCESS`/`FAIL`) to the run log. This separates operational status (run log) from diagnostic detail (log file), avoids adding Gold-specific columns to a shared table, and keeps the run log readable across layers. Pipeline-level errors also propagate to `pipeline.log` via the root logger.
+
+**Progressive development — intentional non-uniformity**
+- This project was built incrementally as a learning exercise. Patterns, structure, and code quality evolved across layers — earlier layers reflect earlier understanding, and later layers reflect more refined thinking. Conventions such as the Python `logging` module were introduced partway through and applied from that point forward rather than retrofitted. No refactoring was applied retrospectively, as the goal was forward progress and embedded learning rather than a production-grade codebase. Where known improvements exist, they are documented as assumptions or inline notes rather than implemented.
 
 **Silver validation — dynamic queries over f-string SQL**
 - In production, validation would typically use one script per table (as in dbt), allowing fully static, parameterised SQL. Because this project consolidates all six tables into a single validation script, table and column names must be interpolated dynamically using f-strings and Python loops. This carries a theoretical SQL injection risk. In this project, all dynamic values come from a controlled `config.yaml` file with no user input, so the risk is accepted. In a production system with external input, parameterised queries or an ORM would be required.
