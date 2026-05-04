@@ -49,6 +49,5 @@ def run_silver_pipeline():
         if conn:
             conn.close()
 
-#To be run in a master orchestrator file
 if __name__ == "__main__":
     run_silver_pipeline()

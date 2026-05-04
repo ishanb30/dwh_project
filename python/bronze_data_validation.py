@@ -10,11 +10,11 @@ from paths import SOURCE_CSV_DIR
 from paths import BRONZE_LOAD_CHECK
 from db_utils import get_cursor
 
-class RowMismatch(Exception):
+class BronzeRowMismatch(Exception):
     def __init__(self, row_comparison):
         self.row_comparison = row_comparison
 
-class KeyMismatch(Exception):
+class BronzeKeyMismatch(Exception):
     def __init__(self, key_comparison):
         self.key_comparison = key_comparison
 
@@ -92,16 +92,16 @@ def run_bronze_validation():
                     update_with_row_count(source_counts, bronze_counts, 'SUCCESS', run_id, key, cursor)
                 conn.commit()
             else:
-                raise RowMismatch(row_comparison)
+                raise BronzeRowMismatch(row_comparison)
         else:
             key_comparison = source_keys.symmetric_difference(bronze_keys)
-            raise KeyMismatch(key_comparison)
-    except RowMismatch as e:
+            raise BronzeKeyMismatch(key_comparison)
+    except BronzeRowMismatch as e:
         for key in e.row_comparison:
             update_with_row_count(source_counts, bronze_counts, 'FAILED', run_id, key, cursor)
         conn.commit()
         raise
-    except KeyMismatch as e:
+    except BronzeKeyMismatch as e:
         for key in source_keys:
             update_without_row_count('FAILED', run_id, key, cursor)
         conn.commit()
@@ -113,7 +113,6 @@ def run_bronze_validation():
             conn.close()
 
 
-#To be run in a master orchestrator file
 if __name__ == "__main__":
     run_bronze_validation()
 

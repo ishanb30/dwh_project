@@ -27,7 +27,7 @@ class SilverValidationFailed(Exception):
     def __init__(self, failed_checks):
         self.failed_checks = failed_checks
 
-def check_ref_integrity(refs, cursor):
+def check_ref_integrity(cursor):
     failed = []
     for ref in refs:
         cursor.execute(f"""
@@ -48,7 +48,7 @@ def check_ref_integrity(refs, cursor):
 
     return failed
 
-def check_nulls(silver, cursor):
+def check_nulls(cursor):
     failed = []
     for table, detail in silver.items():
         for key in detail["primary_keys"]:
@@ -67,7 +67,7 @@ def check_nulls(silver, cursor):
 
     return failed
 
-def check_duplicates(silver, cursor):
+def check_duplicates(cursor):
     failed = []
     for table, detail in silver.items():
         cursor.execute(f"""
@@ -109,23 +109,23 @@ def update_run_log(validation_status,ref_integrity_status,run_id,null_status,dup
         WHERE run_id = '{run_id}' AND layer = 'silver' AND proc_name = 'silver.load_{table}' 
     """)
 
-def run_silver_validation(silver):
+def run_silver_validation():
     conn = None
     cursor = None
 
     try:
         conn, cursor = get_cursor()
 
-        ref_integrity = check_ref_integrity(refs, cursor)
-        nulls = check_nulls(silver, cursor)
-        duplicates = check_duplicates(silver, cursor)
+        ref_integrity = check_ref_integrity(cursor)
+        nulls = check_nulls(cursor)
+        duplicates = check_duplicates(cursor)
         run_id = get_run_id(cursor)
 
         for table, detail in silver.items():
             ref_integrity_status = "FAIL" if any(table == r["src_table"] or table == r["tgt_table"] for r in ref_integrity) else "PASS"
             null_status = "FAIL" if any(table in n for n in nulls) else "PASS"
             duplicate_status = "FAIL" if any(table in d for d in duplicates) else "PASS"
-            validation_status = "FAIL" if any(s == "FAIL" for s in [ref_integrity_status,null_status,duplicate_status]) else "PASS"
+            validation_status = "FAIL" if any(s == "FAIL" for s in [ref_integrity_status,null_status,duplicate_status]) else "SUCCESS"
 
             update_run_log(validation_status,ref_integrity_status,run_id,null_status,duplicate_status,table,cursor)
         conn.commit()
@@ -145,4 +145,4 @@ def run_silver_validation(silver):
 
 
 if __name__ == "__main__":
-    run_silver_validation(silver)
+    run_silver_validation()

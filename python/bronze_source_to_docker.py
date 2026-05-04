@@ -10,6 +10,11 @@ Linux.
 import subprocess
 from paths import SOURCE_CSV_DIR
 
+class SourceToDockerFailed(Exception):
+    def __init__(self, failed_copy):
+        self.failed_copy = failed_copy
+        super().__init__(failed_copy)
+
 def run_source_to_docker():
     try:
         files = list(SOURCE_CSV_DIR.rglob("*csv"))
@@ -20,8 +25,7 @@ def run_source_to_docker():
                 , check=True
             )
     except subprocess.CalledProcessError as e:
-        raise Exception(f"{e}: Failed to copy {file.name}")
+        raise SourceToDockerFailed(f"{e}: Failed to copy {file.name}")
 
-#will be part of master orchestrator
 if __name__ == "__main__":
     run_source_to_docker()
